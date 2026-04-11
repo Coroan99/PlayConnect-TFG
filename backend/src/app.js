@@ -4,8 +4,10 @@ import express from "express";
 import { getPool } from "./config/db.js";
 import { ensureInventarioTable } from "./repositories/inventario.repository.js";
 import { ensureJuegosTable } from "./repositories/juegos.repository.js";
+import { ensurePublicacionesTable } from "./repositories/publicaciones.repository.js";
 import inventarioRoutes from "./routes/inventario.routes.js";
 import juegosRoutes from "./routes/juegos.routes.js";
+import publicacionesRoutes from "./routes/publicaciones.routes.js";
 import usuariosRoutes from "./routes/usuarios.routes.js";
 import { sendError, sendSuccess } from "./utils/response.js";
 
@@ -40,7 +42,7 @@ app.get("/db-test", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error conectando con MySQL:", error.message);
+    console.error("Error conectando con MySQL:", error);
 
     return sendError(res, {
       statusCode: 500,
@@ -54,6 +56,7 @@ app.use("/usuarios", usuariosRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/juegos", juegosRoutes);
 app.use("/api/inventario", inventarioRoutes);
+app.use("/api/publicaciones", publicacionesRoutes);
 
 app.use((req, res) => {
   return sendError(res, {
@@ -70,7 +73,7 @@ app.use((error, req, res, next) => {
     });
   }
 
-  console.error("Error interno no controlado:", error.message);
+  console.error("Error interno no controlado:", error);
 
   return sendError(res, {
     statusCode: 500,
@@ -83,12 +86,13 @@ const startServer = async () => {
   try {
     await ensureJuegosTable();
     await ensureInventarioTable();
+    await ensurePublicacionesTable();
 
     app.listen(PORT, () => {
       console.log(`Servidor en http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error("Error iniciando la aplicación:", error.message);
+    console.error("Error iniciando la aplicación:", error);
     process.exit(1);
   }
 };
