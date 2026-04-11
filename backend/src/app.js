@@ -1,90 +1,92 @@
-import express from "express";
 import dotenv from "dotenv";
-import pool from "./config/db.js";
+import cors from "cors";
+import express from "express";
+import { getPool } from "./config/db.js";
+import { ensureJuegosTable } from "./repositories/juegos.repository.js";
+import juegosRoutes from "./routes/juegos.routes.js";
+import usuariosRoutes from "./routes/usuarios.routes.js";
+import { sendError, sendSuccess } from "./utils/response.js";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.disable("x-powered-by");
+app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("PlayConnect API funcionando 🚀");
+  return sendSuccess(res, {
+    message: "PlayConnect API funcionando correctamente",
+    data: {
+      name: "PlayConnect API",
+      status: "online",
+    },
+  });
 });
 
 app.get("/db-test", async (req, res) => {
   try {
+    const pool = getPool();
     const [rows] = await pool.query("SELECT NOW() AS now");
 
-    res.json({
-      ok: true,
+    return sendSuccess(res, {
       message: "Conexión a MySQL correcta",
-      time: rows[0].now,
+      data: {
+        now: rows[0].now,
+      },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error conectando con MySQL:", error.message);
 
-    res.status(500).json({
-      ok: false,
+    return sendError(res, {
+      statusCode: 500,
       message: "Error conectando con MySQL",
       error: error.message,
     });
   }
 });
 
-app.get("/usuarios", async (req, res) => {
-  try {
-    const [rows] = await pool.query(
-      "SELECT id, nombre, email, tipo, created_at FROM usuarios",
-    );
-    res.json({
-      ok: true,
-      data: rows,
-    });
-  } catch (error) {
-    console.error("Error obteniendo usuarios:", error.message);
-    res.status(500).json({
-      ok: false,
-      message: "Error obteniendo usuarios",
-      error: error.message,
+app.use("/usuarios", usuariosRoutes);
+app.use("/api/usuarios", usuariosRoutes);
+app.use("/api/juegos", juegosRoutes);
+
+app.use((req, res) => {
+  return sendError(res, {
+    statusCode: 404,
+    message: "Ruta no encontrada",
+  });
+});
+
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
+    return sendError(res, {
+      statusCode: 400,
+      message: "JSON inválido en el cuerpo de la petición",
     });
   }
+
+  console.error("Error interno no controlado:", error.message);
+
+  return sendError(res, {
+    statusCode: 500,
+    message: "Error interno del servidor",
+    error: error.message,
+  });
 });
 
-app.post("/usuarios", async (req, res) => {
+const startServer = async () => {
   try {
-    const { nombre, email, password, tipo } = req.body;
+    await ensureJuegosTable();
 
-    if (!nombre || !email || !password) {
-      return res.status(400).json({
-        ok: false,
-        message: "Nombre, email y password son obligatorios",
-      });
-    }
-
-    const userType = tipo || "normal";
-
-    await pool.query(
-      `INSERT INTO usuarios (id, nombre, email, password, tipo)
-       VALUES (UUID(), ?, ?, ?, ?)`,
-      [nombre, email, password, userType],
-    );
-
-    res.status(201).json({
-      ok: true,
-      message: "Usuario creado correctamente",
+    app.listen(PORT, () => {
+      console.log(`Servidor en http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error("Error creando usuario:", error.message);
-    res.status(500).json({
-      ok: false,
-      message: "Error creando usuario",
-      error: error.message,
-    });
+    console.error("Error iniciando la aplicación:", error.message);
+    process.exit(1);
   }
-});
+};
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Servidor en http://localhost:${PORT}`);
-});
+startServer();
