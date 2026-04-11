@@ -2,7 +2,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 import express from "express";
 import { getPool } from "./config/db.js";
+import { ensureInventarioTable } from "./repositories/inventario.repository.js";
 import { ensureJuegosTable } from "./repositories/juegos.repository.js";
+import inventarioRoutes from "./routes/inventario.routes.js";
 import juegosRoutes from "./routes/juegos.routes.js";
 import usuariosRoutes from "./routes/usuarios.routes.js";
 import { sendError, sendSuccess } from "./utils/response.js";
@@ -51,6 +53,7 @@ app.get("/db-test", async (req, res) => {
 app.use("/usuarios", usuariosRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/juegos", juegosRoutes);
+app.use("/api/inventario", inventarioRoutes);
 
 app.use((req, res) => {
   return sendError(res, {
@@ -79,6 +82,7 @@ app.use((error, req, res, next) => {
 const startServer = async () => {
   try {
     await ensureJuegosTable();
+    await ensureInventarioTable();
 
     app.listen(PORT, () => {
       console.log(`Servidor en http://localhost:${PORT}`);
