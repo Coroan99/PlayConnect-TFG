@@ -1,4 +1,5 @@
 import { getPool } from "../config/db.js";
+import { ensureUsuariosTable } from "../repositories/usuarios.repository.js";
 import { sendError, sendSuccess } from "../utils/response.js";
 
 const ALLOWED_USER_TYPES = new Set(["normal", "tienda"]);
@@ -6,6 +7,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const getUsuarios = async (req, res) => {
   try {
+    await ensureUsuariosTable();
     const pool = getPool();
     const [rows] = await pool.query(
       "SELECT id, nombre, email, tipo, created_at FROM usuarios ORDER BY created_at DESC",
@@ -28,6 +30,8 @@ export const getUsuarios = async (req, res) => {
 
 export const createUsuario = async (req, res) => {
   try {
+    await ensureUsuariosTable();
+
     if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
       return sendError(res, {
         statusCode: 400,

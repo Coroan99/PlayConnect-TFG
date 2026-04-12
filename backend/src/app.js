@@ -4,11 +4,15 @@ import express from "express";
 import { getPool } from "./config/db.js";
 import { ensureInventarioTable } from "./repositories/inventario.repository.js";
 import { ensureJuegosTable } from "./repositories/juegos.repository.js";
+import { ensureInteresesTable } from "./repositories/intereses.repository.js";
 import { ensurePublicacionesTable } from "./repositories/publicaciones.repository.js";
+import { ensureUsuariosTable } from "./repositories/usuarios.repository.js";
 import inventarioRoutes from "./routes/inventario.routes.js";
+import interesesRoutes from "./routes/intereses.routes.js";
 import juegosRoutes from "./routes/juegos.routes.js";
 import publicacionesRoutes from "./routes/publicaciones.routes.js";
 import usuariosRoutes from "./routes/usuarios.routes.js";
+import { AppError } from "./utils/app-error.js";
 import { sendError, sendSuccess } from "./utils/response.js";
 
 dotenv.config({ quiet: true });
@@ -57,6 +61,7 @@ app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/juegos", juegosRoutes);
 app.use("/api/inventario", inventarioRoutes);
 app.use("/api/publicaciones", publicacionesRoutes);
+app.use("/api", interesesRoutes);
 
 app.use((req, res) => {
   return sendError(res, {
@@ -73,6 +78,13 @@ app.use((error, req, res, next) => {
     });
   }
 
+  if (error instanceof AppError) {
+    return sendError(res, {
+      statusCode: error.statusCode,
+      message: error.message,
+    });
+  }
+
   console.error("Error interno no controlado:", error);
 
   return sendError(res, {
@@ -84,9 +96,11 @@ app.use((error, req, res, next) => {
 
 const startServer = async () => {
   try {
+    await ensureUsuariosTable();
     await ensureJuegosTable();
     await ensureInventarioTable();
     await ensurePublicacionesTable();
+    await ensureInteresesTable();
 
     app.listen(PORT, () => {
       console.log(`Servidor en http://localhost:${PORT}`);

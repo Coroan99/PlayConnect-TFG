@@ -1,5 +1,6 @@
 import { getPool } from "../config/db.js";
 import { ensureJuegosTable } from "./juegos.repository.js";
+import { ensureUsuariosTable } from "./usuarios.repository.js";
 
 const INVENTARIO_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS inventario (
@@ -80,6 +81,7 @@ export const ensureInventarioTable = async () => {
     const pool = getPool();
 
     ensureTablePromise = (async () => {
+      await ensureUsuariosTable();
       await ensureJuegosTable();
       await pool.query(INVENTARIO_TABLE_SQL);
     })().catch((error) => {
