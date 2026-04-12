@@ -64,7 +64,10 @@ export const createPublicacion = async (payload) => {
   const publicacionId = await generatePublicacionId();
 
   if (!publicacionId) {
-    throw new AppError("No se pudo generar el identificador de la publicación", 500);
+    throw new AppError(
+      "No se pudo generar el identificador de la publicación",
+      500,
+    );
   }
 
   try {
