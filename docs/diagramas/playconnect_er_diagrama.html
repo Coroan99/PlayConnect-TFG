@@ -10,11 +10,9 @@
     :root {
       --bg: #f8fafc;
       --panel: #ffffff;
-      --panel-2: #f1f5f9;
       --text: #0f172a;
       --muted: #475569;
       --border: #cbd5e1;
-      --accent: #2563eb;
     }
 
     * {
@@ -114,36 +112,8 @@
 
     mermaid.initialize({
       startOnLoad: false,
-      theme: 'base',
+      theme: 'default',
       securityLevel: 'loose',
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      themeVariables: {
-        darkMode: false,
-        fontSize: '14px',
-
-        background: '#ffffff',
-        mainBkg: '#ffffff',
-        secondBkg: '#f8fafc',
-        tertiaryBkg: '#f1f5f9',
-
-        primaryColor: '#ffffff',
-        primaryBorderColor: '#334155',
-        primaryTextColor: '#000000',
-
-        secondaryColor: '#f8fafc',
-        tertiaryColor: '#f1f5f9',
-
-        lineColor: '#475569',
-        textColor: '#000000',
-        nodeBorder: '#334155',
-
-        attributeBackgroundColorOdd: '#f8fafc',
-        attributeBackgroundColorEven: '#eef2f7',
-
-        edgeLabelBackground: '#ffffff',
-        clusterBkg: '#f8fafc',
-        clusterBorder: '#cbd5e1'
-      },
       er: {
         diagramPadding: 20,
         layoutDirection: 'TB'
@@ -228,6 +198,46 @@ erDiagram
 
     const { svg } = await mermaid.render('erd-svg', diagram);
     document.getElementById('erd').innerHTML = svg;
+
+    const svgElement = document.querySelector('#erd svg');
+
+    if (svgElement) {
+      svgElement.style.background = 'transparent';
+
+      svgElement.querySelectorAll('text, tspan').forEach((el) => {
+        el.setAttribute('fill', '#000000');
+        el.style.fill = '#000000';
+      });
+
+      svgElement.querySelectorAll('foreignObject, foreignObject *').forEach((el) => {
+        el.style.color = '#000000';
+        el.style.fill = '#000000';
+      });
+
+      svgElement.querySelectorAll('.er.entityBox').forEach((el) => {
+        el.setAttribute('fill', '#ffffff');
+        el.style.fill = '#ffffff';
+        el.setAttribute('stroke', '#334155');
+        el.style.stroke = '#334155';
+      });
+
+      svgElement.querySelectorAll('.er.attributeBoxOdd, .er.attributeBoxEven').forEach((el) => {
+        el.setAttribute('fill', '#f8fafc');
+        el.style.fill = '#f8fafc';
+        el.setAttribute('stroke', '#334155');
+        el.style.stroke = '#334155';
+      });
+
+      svgElement.querySelectorAll('.er.relationshipLabelBox').forEach((el) => {
+        el.setAttribute('fill', '#ffffff');
+        el.style.fill = '#ffffff';
+      });
+
+      svgElement.querySelectorAll('line, path').forEach((el) => {
+        el.setAttribute('stroke', '#475569');
+        el.style.stroke = '#475569';
+      });
+    }
   </script>
 </body>
 </html>
