@@ -14,6 +14,25 @@ class PublicacionesApi {
     return items.map(Publicacion.fromJson).toList();
   }
 
+  Future<Publicacion> fetchPublicacionById(String publicacionId) async {
+    final response = await _client.get('publicaciones/$publicacionId');
+    final publicacion = Publicacion.fromJson(_asJsonMap(response.data));
+    final juegoResponse = await _client.get('juegos/${publicacion.juego.id}');
+    final juego = PublicacionJuego.fromJson(_asJsonMap(juegoResponse.data));
+
+    return publicacion.copyWith(
+      juego: publicacion.juego.copyWith(
+        codigoBarras: juego.codigoBarras,
+        imagenUrl: juego.imagenUrl,
+        plataforma: juego.plataforma,
+        jugadoresMin: juego.jugadoresMin,
+        jugadoresMax: juego.jugadoresMax,
+        duracionMinutos: juego.duracionMinutos,
+        descripcion: juego.descripcion,
+      ),
+    );
+  }
+
   Future<void> createInteres({
     required String usuarioId,
     required String publicacionId,
@@ -24,21 +43,25 @@ class PublicacionesApi {
     );
   }
 
+  Map<String, Object?> _asJsonMap(Object? payload) {
+    if (payload is Map<String, Object?>) {
+      return payload;
+    }
+
+    if (payload is Map) {
+      return Map<String, Object?>.from(payload);
+    }
+
+    throw const ApiException('La API devolvio una publicacion inesperada.');
+  }
+
   List<Map<String, Object?>> _asJsonList(Object? payload) {
     if (payload is! List) {
       throw const ApiException('La API devolvio una lista inesperada.');
     }
 
     return payload.map((item) {
-      if (item is Map<String, Object?>) {
-        return item;
-      }
-
-      if (item is Map) {
-        return Map<String, Object?>.from(item);
-      }
-
-      throw const ApiException('La API devolvio una publicacion inesperada.');
+      return _asJsonMap(item);
     }).toList();
   }
 }

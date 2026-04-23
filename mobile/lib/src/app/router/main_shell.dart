@@ -21,10 +21,29 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
+    final isPublicationDetail = location.startsWith(
+      AppRoute.publicationDetail.path,
+    );
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppConfig.appName),
+        leading: isPublicationDetail
+            ? IconButton(
+                tooltip: 'Volver',
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                    return;
+                  }
+
+                  context.go(AppRoute.home.path);
+                },
+                icon: const Icon(Icons.arrow_back),
+              )
+            : null,
+        title: Text(
+          isPublicationDetail ? 'Detalle de publicacion' : AppConfig.appName,
+        ),
         actions: [
           IconButton(
             tooltip: 'Notificaciones',
@@ -45,38 +64,40 @@ class MainShell extends ConsumerWidget {
         ],
       ),
       body: SafeArea(child: child),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex(location),
-        onDestinationSelected: (index) {
-          final path = _tabs[index].path;
+      bottomNavigationBar: isPublicationDetail
+          ? null
+          : NavigationBar(
+              selectedIndex: _selectedIndex(location),
+              onDestinationSelected: (index) {
+                final path = _tabs[index].path;
 
-          if (path != location) {
-            context.go(path);
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Inicio',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.sports_esports_outlined),
-            selectedIcon: Icon(Icons.sports_esports),
-            label: 'Juegos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
-            label: 'Inventario',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
-        ],
-      ),
+                if (path != location) {
+                  context.go(path);
+                }
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.dashboard_outlined),
+                  selectedIcon: Icon(Icons.dashboard),
+                  label: 'Inicio',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.sports_esports_outlined),
+                  selectedIcon: Icon(Icons.sports_esports),
+                  label: 'Juegos',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  selectedIcon: Icon(Icons.inventory_2),
+                  label: 'Inventario',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: 'Perfil',
+                ),
+              ],
+            ),
     );
   }
 

@@ -23,6 +23,10 @@ class PublicacionesRepository {
     return _api.fetchPublicaciones();
   }
 
+  Future<Publicacion> getPublicacionById(String publicacionId) {
+    return _api.fetchPublicacionById(publicacionId);
+  }
+
   Future<void> registrarInteres({
     required String usuarioId,
     required String publicacionId,

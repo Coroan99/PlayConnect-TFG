@@ -15,6 +15,17 @@ class Publicacion {
   final PublicacionUsuario usuario;
   final PublicacionJuego juego;
 
+  Publicacion copyWith({PublicacionJuego? juego}) {
+    return Publicacion(
+      id: id,
+      descripcion: descripcion,
+      createdAt: createdAt,
+      inventario: inventario,
+      usuario: usuario,
+      juego: juego ?? this.juego,
+    );
+  }
+
   factory Publicacion.fromJson(Map<String, Object?> json) {
     return Publicacion(
       id: _readString(json['id']),
@@ -88,6 +99,10 @@ class PublicacionJuego {
     this.codigoBarras,
     this.imagenUrl,
     this.plataforma,
+    this.jugadoresMin,
+    this.jugadoresMax,
+    this.duracionMinutos,
+    this.descripcion,
   });
 
   final String id;
@@ -96,6 +111,10 @@ class PublicacionJuego {
   final String? codigoBarras;
   final String? imagenUrl;
   final String? plataforma;
+  final int? jugadoresMin;
+  final int? jugadoresMax;
+  final int? duracionMinutos;
+  final String? descripcion;
 
   String get tipoLabel {
     return switch (tipoJuego) {
@@ -103,6 +122,52 @@ class PublicacionJuego {
       'videojuego' => 'Videojuego',
       _ => tipoJuego,
     };
+  }
+
+  String? get jugadoresLabel {
+    if (jugadoresMin == null && jugadoresMax == null) {
+      return null;
+    }
+
+    if (jugadoresMin != null && jugadoresMax != null) {
+      return '$jugadoresMin-$jugadoresMax jugadores';
+    }
+
+    final value = jugadoresMin ?? jugadoresMax;
+    return '$value jugadores';
+  }
+
+  String? get duracionLabel {
+    final value = duracionMinutos;
+
+    if (value == null) {
+      return null;
+    }
+
+    return '$value min';
+  }
+
+  PublicacionJuego copyWith({
+    String? codigoBarras,
+    String? imagenUrl,
+    String? plataforma,
+    int? jugadoresMin,
+    int? jugadoresMax,
+    int? duracionMinutos,
+    String? descripcion,
+  }) {
+    return PublicacionJuego(
+      id: id,
+      nombre: nombre,
+      tipoJuego: tipoJuego,
+      codigoBarras: codigoBarras ?? this.codigoBarras,
+      imagenUrl: imagenUrl ?? this.imagenUrl,
+      plataforma: plataforma ?? this.plataforma,
+      jugadoresMin: jugadoresMin ?? this.jugadoresMin,
+      jugadoresMax: jugadoresMax ?? this.jugadoresMax,
+      duracionMinutos: duracionMinutos ?? this.duracionMinutos,
+      descripcion: descripcion ?? this.descripcion,
+    );
   }
 
   factory PublicacionJuego.fromJson(Map<String, Object?> json) {
@@ -115,6 +180,12 @@ class PublicacionJuego {
       ),
       imagenUrl: _readNullableString(json['imagen_url'] ?? json['imagenUrl']),
       plataforma: _readNullableString(json['plataforma']),
+      jugadoresMin: _readInt(json['jugadores_min'] ?? json['jugadoresMin']),
+      jugadoresMax: _readInt(json['jugadores_max'] ?? json['jugadoresMax']),
+      duracionMinutos: _readInt(
+        json['duracion_minutos'] ?? json['duracionMinutos'],
+      ),
+      descripcion: _readNullableString(json['descripcion']),
     );
   }
 }
@@ -154,6 +225,22 @@ double? _readDouble(Object? value) {
   }
 
   return double.tryParse(value.toString());
+}
+
+int? _readInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+
+  if (value is int) {
+    return value;
+  }
+
+  if (value is num) {
+    return value.toInt();
+  }
+
+  return int.tryParse(value.toString());
 }
 
 DateTime? _readDate(Object? value) {

@@ -9,6 +9,7 @@ import '../../features/games/presentation/screens/games_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../features/offers/presentation/screens/publication_detail_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import 'main_shell.dart';
 
@@ -20,6 +21,7 @@ enum AppRoute {
   games('/games'),
   inventory('/inventory'),
   notifications('/notifications'),
+  publicationDetail('/publicaciones'),
   profile('/profile');
 
   const AppRoute(this.path);
@@ -95,6 +97,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoute.notifications.path,
             name: AppRoute.notifications.name,
             builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: '${AppRoute.publicationDetail.path}/:id',
+            name: AppRoute.publicationDetail.name,
+            builder: (context, state) => PublicationDetailScreen(
+              publicacionId: state.pathParameters['id'] ?? '',
+            ),
           ),
           GoRoute(
             path: AppRoute.profile.path,

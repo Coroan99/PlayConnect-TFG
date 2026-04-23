@@ -23,6 +23,22 @@ class Notificacion {
   final NotificacionReferencia? referencia;
   final Map<String, Object?>? metadata;
 
+  String? get publicacionId {
+    final metadataPublicacionId = _readOptionalString(
+      metadata?['publicacion_id'],
+    );
+
+    if (metadataPublicacionId != null) {
+      return metadataPublicacionId;
+    }
+
+    if (referencia?.tipo == 'PUBLICACION') {
+      return referencia?.id;
+    }
+
+    return null;
+  }
+
   Notificacion copyWith({bool? leida, DateTime? readAt}) {
     return Notificacion(
       id: id,
@@ -157,6 +173,11 @@ String _readString(Object? value) {
   }
 
   return value.toString();
+}
+
+String? _readOptionalString(Object? value) {
+  final text = _readString(value).trim();
+  return text.isEmpty ? null : text;
 }
 
 DateTime? _readDate(Object? value) {

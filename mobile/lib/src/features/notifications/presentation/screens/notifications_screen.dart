@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../controllers/notificaciones_controller.dart';
@@ -165,6 +167,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         .items
         .where((item) => item.id == notificacionId)
         .firstOrNull;
+    final publicacionId = notificacion?.publicacionId;
+
+    if (publicacionId != null) {
+      context.pushNamed(
+        AppRoute.publicationDetail.name,
+        pathParameters: {'id': publicacionId},
+      );
+      return;
+    }
+
     final referencia = notificacion?.referencia;
 
     if (referencia == null) {

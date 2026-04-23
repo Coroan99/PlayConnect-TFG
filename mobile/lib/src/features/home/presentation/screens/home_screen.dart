@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../publications/presentation/controllers/publicaciones_controller.dart';
@@ -82,6 +84,10 @@ class HomeScreen extends ConsumerWidget {
                     isOwnPublication: isOwnPublication,
                     hasInterest: hasInterest,
                     isSubmittingInterest: isSubmittingInterest,
+                    onTap: () => context.pushNamed(
+                      AppRoute.publicationDetail.name,
+                      pathParameters: {'id': publicacion.id},
+                    ),
                     onInterestPressed: usuario == null
                         ? null
                         : () => _registrarInteres(
