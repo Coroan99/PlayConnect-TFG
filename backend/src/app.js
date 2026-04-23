@@ -5,12 +5,14 @@ import { getPool } from "./config/db.js";
 import { ensureInventarioTable } from "./repositories/inventario.repository.js";
 import { ensureJuegosTable } from "./repositories/juegos.repository.js";
 import { ensureInteresesTable } from "./repositories/intereses.repository.js";
+import { ensureNotificacionesTable } from "./repositories/notificaciones.repository.js";
 import { ensureOfertasTable } from "./repositories/ofertas.repository.js";
 import { ensurePublicacionesTable } from "./repositories/publicaciones.repository.js";
 import { ensureUsuariosTable } from "./repositories/usuarios.repository.js";
 import inventarioRoutes from "./routes/inventario.routes.js";
 import interesesRoutes from "./routes/intereses.routes.js";
 import juegosRoutes from "./routes/juegos.routes.js";
+import notificacionesRoutes from "./routes/notificaciones.routes.js";
 import ofertasRoutes from "./routes/ofertas.routes.js";
 import publicacionesRoutes from "./routes/publicaciones.routes.js";
 import usuariosRoutes from "./routes/usuarios.routes.js";
@@ -65,6 +67,7 @@ app.use("/api/inventario", inventarioRoutes);
 app.use("/api/publicaciones", publicacionesRoutes);
 app.use("/api", interesesRoutes);
 app.use("/api", ofertasRoutes);
+app.use("/api", notificacionesRoutes);
 
 app.use((req, res) => {
   return sendError(res, {
@@ -105,6 +108,7 @@ const startServer = async () => {
     await ensurePublicacionesTable();
     await ensureInteresesTable();
     await ensureOfertasTable();
+    await ensureNotificacionesTable();
 
     app.listen(PORT, () => {
       console.log(`Servidor en http://localhost:${PORT}`);

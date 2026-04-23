@@ -37,6 +37,8 @@ const INTERESES_TABLE_SQL_URL = new URL(
 
 let ensureTablePromise;
 
+const getExecutor = (executor) => executor ?? getPool();
+
 const mapInteresRow = (row) => ({
   id: row.id,
   created_at: row.created_at,
@@ -85,16 +87,33 @@ export const ensureInteresesTable = async () => {
   await ensureTablePromise;
 };
 
-export const generateInteresId = async () => {
+export const runInteresesTransaction = async (callback) => {
   const pool = getPool();
-  const [rows] = await pool.query("SELECT UUID() AS id");
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+export const generateInteresId = async (executor) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.query("SELECT UUID() AS id");
 
   return rows[0]?.id ?? null;
 };
 
-export const findUsuarioReferenceById = async (id) => {
-  const pool = getPool();
-  const [rows] = await pool.execute(
+export const findUsuarioReferenceById = async (id, executor) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
     `SELECT id, nombre
      FROM usuarios
      WHERE id = ?
@@ -105,9 +124,9 @@ export const findUsuarioReferenceById = async (id) => {
   return rows[0] ?? null;
 };
 
-export const findPublicacionReferenceById = async (id) => {
-  const pool = getPool();
-  const [rows] = await pool.execute(
+export const findPublicacionReferenceById = async (id, executor) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
     `SELECT
        p.id,
        p.descripcion,
@@ -139,9 +158,9 @@ export const findPublicacionReferenceById = async (id) => {
   };
 };
 
-export const findInteresById = async (id) => {
-  const pool = getPool();
-  const [rows] = await pool.execute(
+export const findInteresById = async (id, executor) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
     `${BASE_SELECT} WHERE it.id = ? LIMIT 1`,
     [id],
   );
@@ -149,9 +168,13 @@ export const findInteresById = async (id) => {
   return rows[0] ? mapInteresRow(rows[0]) : null;
 };
 
-export const findInteresByUsuarioAndPublicacion = async (usuarioId, publicacionId) => {
-  const pool = getPool();
-  const [rows] = await pool.execute(
+export const findInteresByUsuarioAndPublicacion = async (
+  usuarioId,
+  publicacionId,
+  executor,
+) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
     `SELECT id, usuario_id, publicacion_id, created_at
      FROM intereses
      WHERE usuario_id = ? AND publicacion_id = ?
@@ -162,9 +185,9 @@ export const findInteresByUsuarioAndPublicacion = async (usuarioId, publicacionI
   return rows[0] ?? null;
 };
 
-export const findInteresesByPublicacionId = async (publicacionId) => {
-  const pool = getPool();
-  const [rows] = await pool.execute(
+export const findInteresesByPublicacionId = async (publicacionId, executor) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
     `${BASE_SELECT} WHERE it.publicacion_id = ? ORDER BY it.created_at DESC`,
     [publicacionId],
   );
@@ -172,9 +195,9 @@ export const findInteresesByPublicacionId = async (publicacionId) => {
   return rows.map(mapInteresRow);
 };
 
-export const findInteresesByUsuarioId = async (usuarioId) => {
-  const pool = getPool();
-  const [rows] = await pool.execute(
+export const findInteresesByUsuarioId = async (usuarioId, executor) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
     `${BASE_SELECT} WHERE it.usuario_id = ? ORDER BY it.created_at DESC`,
     [usuarioId],
   );
@@ -182,10 +205,22 @@ export const findInteresesByUsuarioId = async (usuarioId) => {
   return rows.map(mapInteresRow);
 };
 
-export const insertInteres = async (interes) => {
-  const pool = getPool();
+export const countInteresesByPublicacionId = async (publicacionId, executor) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
+    `SELECT COUNT(*) AS total
+     FROM intereses
+     WHERE publicacion_id = ?`,
+    [publicacionId],
+  );
 
-  await pool.execute(
+  return Number(rows[0]?.total ?? 0);
+};
+
+export const insertInteres = async (interes, executor) => {
+  const db = getExecutor(executor);
+
+  await db.execute(
     `INSERT INTO intereses (
       id,
       usuario_id,
@@ -199,9 +234,9 @@ export const insertInteres = async (interes) => {
   );
 };
 
-export const deleteInteres = async (id) => {
-  const pool = getPool();
-  const [result] = await pool.execute(
+export const deleteInteres = async (id, executor) => {
+  const db = getExecutor(executor);
+  const [result] = await db.execute(
     "DELETE FROM intereses WHERE id = ?",
     [id],
   );

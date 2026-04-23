@@ -1,4 +1,5 @@
 import { AppError } from "../utils/app-error.js";
+import { ensureNotificacionesTable } from "../repositories/notificaciones.repository.js";
 import {
   deleteOfertaIfPending,
   ensureOfertasTable,
@@ -8,6 +9,7 @@ import {
   findOfertasByPublicacionId,
   findOfertasReceivedByUsuarioId,
   findOfertasSentByUsuarioId,
+  findPendingOfertaStatesByPublicacionId,
   findPublicacionReferenceById,
   findUsuarioReferenceById,
   generateOfertaId,
@@ -17,6 +19,14 @@ import {
   runOfertasTransaction,
   updateOfertaEstadoIfCurrent,
 } from "../repositories/ofertas.repository.js";
+import {
+  createNotificacion,
+  createNotificacionIfNotExists,
+} from "./notificaciones.service.js";
+import {
+  NOTIFICACION_TIPOS,
+  REFERENCIA_TIPOS,
+} from "../validators/notificaciones.validator.js";
 import {
   validateCreateOfertaPayload,
   validateOfertaId,
@@ -28,6 +38,8 @@ import {
 const FOREIGN_KEY_ERROR_CODE = "ER_NO_REFERENCED_ROW_2";
 const ACCEPTED_OFFER_CONFLICT_MESSAGE =
   "La publicación ya tiene una oferta aceptada";
+
+const formatPrice = (price) => `${Number(price).toFixed(2)} €`;
 
 const ensureUsuarioExists = async (usuarioId, executor) => {
   const usuario = await findUsuarioReferenceById(usuarioId, executor);
@@ -57,10 +69,85 @@ const mapPersistenceError = (error) => {
   throw error;
 };
 
+const createOfertaRecibidaNotification = async (
+  { ofertaId, oferta, ofertante, publicacion },
+  executor,
+) =>
+  createNotificacion(
+    {
+      usuario_id: publicacion.propietario.id,
+      emisor_id: ofertante.id,
+      tipo: NOTIFICACION_TIPOS.OFERTA_RECIBIDA,
+      mensaje: `${ofertante.nombre} ha enviado una oferta de ${formatPrice(
+        oferta.precio_ofrecido,
+      )} por tu publicación.`,
+      referencia_id: ofertaId,
+      referencia_tipo: REFERENCIA_TIPOS.OFERTA,
+      metadata: {
+        publicacion_id: publicacion.id,
+        precio_ofrecido: oferta.precio_ofrecido,
+      },
+    },
+    executor,
+  );
+
+const createOfertaResultadoNotification = async (
+  oferta,
+  estado,
+  executor,
+  metadata = {},
+) => {
+  const isAccepted = estado === "aceptada";
+
+  return createNotificacionIfNotExists(
+    {
+      usuario_id: oferta.usuario.id,
+      emisor_id: oferta.publicacion.propietario.id,
+      tipo: isAccepted
+        ? NOTIFICACION_TIPOS.OFERTA_ACEPTADA
+        : NOTIFICACION_TIPOS.OFERTA_RECHAZADA,
+      mensaje: `Tu oferta de ${formatPrice(oferta.precio_ofrecido)} por "${
+        oferta.publicacion.juego.nombre
+      }" ha sido ${isAccepted ? "aceptada" : "rechazada"}.`,
+      referencia_id: oferta.id,
+      referencia_tipo: REFERENCIA_TIPOS.OFERTA,
+      metadata: {
+        publicacion_id: oferta.publicacion.id,
+        estado,
+        ...metadata,
+      },
+    },
+    executor,
+  );
+};
+
+const createOfertaAutoRechazadaNotification = async (
+  oferta,
+  rejectedOferta,
+  executor,
+) =>
+  createNotificacionIfNotExists(
+    {
+      usuario_id: rejectedOferta.usuario_id,
+      emisor_id: oferta.publicacion.propietario.id,
+      tipo: NOTIFICACION_TIPOS.OFERTA_RECHAZADA,
+      mensaje: `Tu oferta por "${oferta.publicacion.juego.nombre}" ha sido rechazada porque otra oferta fue aceptada.`,
+      referencia_id: rejectedOferta.id,
+      referencia_tipo: REFERENCIA_TIPOS.OFERTA,
+      metadata: {
+        publicacion_id: oferta.publicacion.id,
+        estado: "rechazada",
+        motivo: "otra_oferta_aceptada",
+      },
+    },
+    executor,
+  );
+
 export const createOferta = async (payload) => {
   const normalizedOferta = validateCreateOfertaPayload(payload);
 
   await ensureOfertasTable();
+  await ensureNotificacionesTable();
 
   const ofertaId = await generateOfertaId();
 
@@ -107,6 +194,16 @@ export const createOferta = async (payload) => {
       mapPersistenceError(error);
     }
 
+    await createOfertaRecibidaNotification(
+      {
+        ofertaId,
+        oferta: normalizedOferta,
+        ofertante: usuario,
+        publicacion,
+      },
+      connection,
+    );
+
     return findOfertaById(ofertaId, connection);
   });
 };
@@ -143,6 +240,7 @@ export const updateOfertaStatus = async (id, payload) => {
   const { estado } = validateUpdateOfertaEstadoPayload(payload);
 
   await ensureOfertasTable();
+  await ensureNotificacionesTable();
 
   return runOfertasTransaction(async (connection) => {
     const ofertaSnapshot = await findOfertaStateById(normalizedId, connection);
@@ -161,6 +259,8 @@ export const updateOfertaStatus = async (id, payload) => {
         throw new AppError("Publicación no encontrada", 404);
       }
     }
+
+    let pendingOfertasToReject = [];
 
     const existingOferta = await findOfertaStateById(
       normalizedId,
@@ -186,6 +286,13 @@ export const updateOfertaStatus = async (id, payload) => {
       if (acceptedOferta) {
         throw new AppError(ACCEPTED_OFFER_CONFLICT_MESSAGE, 409);
       }
+
+      pendingOfertasToReject = await findPendingOfertaStatesByPublicacionId(
+        existingOferta.publicacion_id,
+        normalizedId,
+        connection,
+        { forUpdate: true },
+      );
     }
 
     const affectedRows = await updateOfertaEstadoIfCurrent(
@@ -207,7 +314,23 @@ export const updateOfertaStatus = async (id, payload) => {
       );
     }
 
-    return findOfertaById(normalizedId, connection);
+    const updatedOferta = await findOfertaById(normalizedId, connection);
+
+    if (estado === "aceptada" || estado === "rechazada") {
+      await createOfertaResultadoNotification(updatedOferta, estado, connection);
+    }
+
+    if (estado === "aceptada") {
+      for (const rejectedOferta of pendingOfertasToReject) {
+        await createOfertaAutoRechazadaNotification(
+          updatedOferta,
+          rejectedOferta,
+          connection,
+        );
+      }
+    }
+
+    return updatedOferta;
   });
 };
 

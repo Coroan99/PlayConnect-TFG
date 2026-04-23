@@ -237,6 +237,30 @@ export const findAcceptedOfertaByPublicacionId = async (
   return rows[0] ?? null;
 };
 
+export const findPendingOfertaStatesByPublicacionId = async (
+  publicacionId,
+  excludedOfertaId,
+  executor,
+  { forUpdate = false } = {},
+) => {
+  const db = getExecutor(executor);
+  const [rows] = await db.execute(
+    `SELECT
+       id,
+       usuario_id,
+       publicacion_id,
+       estado
+     FROM ofertas
+     WHERE publicacion_id = ?
+       AND id <> ?
+       AND estado = 'pendiente'
+     ORDER BY created_at ASC${forUpdate ? " FOR UPDATE" : ""}`,
+    [publicacionId, excludedOfertaId],
+  );
+
+  return rows;
+};
+
 export const findOfertasByPublicacionId = async (publicacionId, executor) => {
   const db = getExecutor(executor);
   const [rows] = await db.execute(
