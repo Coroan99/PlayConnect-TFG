@@ -33,4 +33,14 @@ class Usuario {
           : null,
     );
   }
+
+  Map<String, Object?> toJson() {
+    return {
+      'id': id,
+      'nombre': nombre,
+      'email': email,
+      'tipo': tipo,
+      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+    };
+  }
 }

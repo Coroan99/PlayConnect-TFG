@@ -2,10 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
+import '../storage/session_storage.dart';
 import 'api_exception.dart';
 import 'api_response.dart';
 
 final dioProvider = Provider<Dio>((ref) {
+  final storage = ref.watch(sessionStorageProvider);
   final dio = Dio(
     BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
@@ -16,6 +18,20 @@ final dioProvider = Provider<Dio>((ref) {
       headers: const {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+      },
+    ),
+  );
+
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        final token = storage.getAuthToken();
+
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+
+        handler.next(options);
       },
     ),
   );

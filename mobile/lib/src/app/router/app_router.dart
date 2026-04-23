@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +12,7 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import 'main_shell.dart';
 
 enum AppRoute {
+  splash('/'),
   login('/login'),
   register('/register'),
   home('/home'),
@@ -27,13 +29,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
 
   return GoRouter(
-    initialLocation: AppRoute.login.path,
+    initialLocation: AppRoute.splash.path,
     redirect: (context, state) {
       final location = state.uri.path;
       final isAuthRoute =
           location == AppRoute.login.path || location == AppRoute.register.path;
 
-      if (location == '/') {
+      if (authState.isCheckingSession) {
+        return location == AppRoute.splash.path ? null : AppRoute.splash.path;
+      }
+
+      if (location == AppRoute.splash.path) {
         return authState.isAuthenticated
             ? AppRoute.home.path
             : AppRoute.login.path;
@@ -50,7 +56,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/', redirect: (context, state) => AppRoute.login.path),
+      GoRoute(
+        path: AppRoute.splash.path,
+        name: AppRoute.splash.name,
+        builder: (context, state) => const _SplashScreen(),
+      ),
       GoRoute(
         path: AppRoute.login.path,
         name: AppRoute.login.name,
@@ -89,3 +99,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+}

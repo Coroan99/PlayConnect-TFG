@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/storage/session_storage.dart';
+import '../domain/auth_session.dart';
 import '../domain/usuario.dart';
 import 'auth_api.dart';
 
@@ -24,6 +28,21 @@ class AuthRepository {
   final AuthApi _api;
   final SessionStorage _storage;
 
+  Future<Usuario?> restoreSession() async {
+    final token = _storage.getAuthToken();
+    final userPayload = _storage.getAuthUser();
+
+    if (token == null ||
+        token.isEmpty ||
+        userPayload == null ||
+        _isExpiredJwt(token)) {
+      await _storage.clear();
+      return null;
+    }
+
+    return Usuario.fromJson(userPayload);
+  }
+
   Future<Usuario> login({
     required String email,
     required String password,
@@ -33,10 +52,7 @@ class AuthRepository {
       password: password,
     );
 
-    final token = session.token;
-    if (token != null && token.isNotEmpty) {
-      await _storage.saveAuthToken(token);
-    }
+    await _saveSession(session);
 
     return session.usuario;
   }
@@ -47,22 +63,54 @@ class AuthRepository {
     required String password,
     required String tipo,
   }) async {
-    final session = await _api.register(
+    await _api.register(
       nombre: nombre.trim(),
       email: email.trim().toLowerCase(),
       password: password,
       tipo: tipo,
     );
 
-    final token = session.token;
-    if (token != null && token.isNotEmpty) {
-      await _storage.saveAuthToken(token);
-    }
-
-    return session.usuario;
+    return login(email: email, password: password);
   }
 
   Future<void> logout() {
     return _storage.clear();
+  }
+
+  Future<void> _saveSession(AuthSession session) async {
+    final token = session.token;
+
+    if (token == null || token.isEmpty) {
+      throw const ApiException('La API no devolvio un token de autenticacion.');
+    }
+
+    await _storage.saveSession(token: token, usuario: session.usuario.toJson());
+  }
+
+  bool _isExpiredJwt(String token) {
+    final parts = token.split('.');
+
+    if (parts.length != 3) {
+      return true;
+    }
+
+    try {
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final claims = jsonDecode(payload);
+
+      if (claims is! Map || claims['exp'] is! num) {
+        return true;
+      }
+
+      final expiresAt = DateTime.fromMillisecondsSinceEpoch(
+        (claims['exp'] as num).toInt() * 1000,
+      );
+
+      return DateTime.now().isAfter(expiresAt);
+    } on FormatException {
+      return true;
+    }
   }
 }

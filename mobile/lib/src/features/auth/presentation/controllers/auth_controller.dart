@@ -4,10 +4,18 @@ import '../../../../core/network/api_exception.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/usuario.dart';
 
-enum AuthStatus { unauthenticated, loading, authenticated, failure }
+enum AuthStatus {
+  checkingSession,
+  unauthenticated,
+  loading,
+  authenticated,
+  failure,
+}
 
 class AuthState {
   const AuthState({required this.status, this.usuario, this.errorMessage});
+
+  const AuthState.checkingSession() : this(status: AuthStatus.checkingSession);
 
   const AuthState.unauthenticated() : this(status: AuthStatus.unauthenticated);
 
@@ -30,6 +38,10 @@ class AuthState {
   bool get isLoading {
     return status == AuthStatus.loading;
   }
+
+  bool get isCheckingSession {
+    return status == AuthStatus.checkingSession;
+  }
 }
 
 final authControllerProvider = NotifierProvider<AuthController, AuthState>(
@@ -39,7 +51,21 @@ final authControllerProvider = NotifierProvider<AuthController, AuthState>(
 class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
-    return const AuthState.unauthenticated();
+    Future.microtask(_restoreSession);
+    return const AuthState.checkingSession();
+  }
+
+  Future<void> _restoreSession() async {
+    try {
+      final usuario = await ref.read(authRepositoryProvider).restoreSession();
+
+      state = usuario == null
+          ? const AuthState.unauthenticated()
+          : AuthState.authenticated(usuario);
+    } catch (_) {
+      await ref.read(authRepositoryProvider).logout();
+      state = const AuthState.unauthenticated();
+    }
   }
 
   Future<void> login({required String email, required String password}) async {
