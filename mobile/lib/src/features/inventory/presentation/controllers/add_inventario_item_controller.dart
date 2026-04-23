@@ -11,43 +11,123 @@ class AddInventarioItemState {
   const AddInventarioItemState({
     required this.juegos,
     required this.isLoadingCatalog,
+    required this.isLookingUpBarcode,
     required this.isSubmitting,
     required this.hasLoadedCatalog,
     this.catalogErrorMessage,
+    this.lastScannedBarcode,
+    this.barcodeLookupJuego,
+    this.barcodeLookupErrorMessage,
+    this.barcodeNotFound = false,
   });
 
   const AddInventarioItemState.initial()
     : this(
         juegos: const [],
         isLoadingCatalog: false,
+        isLookingUpBarcode: false,
         isSubmitting: false,
         hasLoadedCatalog: false,
       );
 
   final List<JuegoCatalogo> juegos;
   final bool isLoadingCatalog;
+  final bool isLookingUpBarcode;
   final bool isSubmitting;
   final bool hasLoadedCatalog;
   final String? catalogErrorMessage;
+  final String? lastScannedBarcode;
+  final JuegoCatalogo? barcodeLookupJuego;
+  final String? barcodeLookupErrorMessage;
+  final bool barcodeNotFound;
 
   bool get hasCatalogError => catalogErrorMessage != null;
+  bool get hasBarcodeLookupError => barcodeLookupErrorMessage != null;
+  bool get hasBarcodeLookupSuccess => barcodeLookupJuego != null;
 
   AddInventarioItemState copyWith({
     List<JuegoCatalogo>? juegos,
     bool? isLoadingCatalog,
+    bool? isLookingUpBarcode,
     bool? isSubmitting,
     bool? hasLoadedCatalog,
     String? catalogErrorMessage,
+    String? lastScannedBarcode,
+    JuegoCatalogo? barcodeLookupJuego,
+    String? barcodeLookupErrorMessage,
+    bool? barcodeNotFound,
     bool clearCatalogError = false,
+    bool clearBarcodeLookupState = false,
   }) {
     return AddInventarioItemState(
       juegos: juegos ?? this.juegos,
       isLoadingCatalog: isLoadingCatalog ?? this.isLoadingCatalog,
+      isLookingUpBarcode: isLookingUpBarcode ?? this.isLookingUpBarcode,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       hasLoadedCatalog: hasLoadedCatalog ?? this.hasLoadedCatalog,
       catalogErrorMessage: clearCatalogError
           ? null
           : catalogErrorMessage ?? this.catalogErrorMessage,
+      lastScannedBarcode: clearBarcodeLookupState
+          ? lastScannedBarcode
+          : lastScannedBarcode ?? this.lastScannedBarcode,
+      barcodeLookupJuego: clearBarcodeLookupState
+          ? barcodeLookupJuego
+          : barcodeLookupJuego ?? this.barcodeLookupJuego,
+      barcodeLookupErrorMessage: clearBarcodeLookupState
+          ? barcodeLookupErrorMessage
+          : barcodeLookupErrorMessage ?? this.barcodeLookupErrorMessage,
+      barcodeNotFound: clearBarcodeLookupState
+          ? barcodeNotFound ?? false
+          : barcodeNotFound ?? this.barcodeNotFound,
+    );
+  }
+}
+
+enum BarcodeLookupStatus { found, notFound, error }
+
+class BarcodeLookupResult {
+  const BarcodeLookupResult._({
+    required this.status,
+    required this.barcode,
+    this.juego,
+    this.message,
+  });
+
+  final BarcodeLookupStatus status;
+  final String barcode;
+  final JuegoCatalogo? juego;
+  final String? message;
+
+  bool get isFound => status == BarcodeLookupStatus.found;
+  bool get isNotFound => status == BarcodeLookupStatus.notFound;
+
+  factory BarcodeLookupResult.found({
+    required String barcode,
+    required JuegoCatalogo juego,
+  }) {
+    return BarcodeLookupResult._(
+      status: BarcodeLookupStatus.found,
+      barcode: barcode,
+      juego: juego,
+    );
+  }
+
+  factory BarcodeLookupResult.notFound({required String barcode}) {
+    return BarcodeLookupResult._(
+      status: BarcodeLookupStatus.notFound,
+      barcode: barcode,
+    );
+  }
+
+  factory BarcodeLookupResult.error({
+    required String barcode,
+    required String message,
+  }) {
+    return BarcodeLookupResult._(
+      status: BarcodeLookupStatus.error,
+      barcode: barcode,
+      message: message,
     );
   }
 }
@@ -92,6 +172,61 @@ class AddInventarioItemController extends Notifier<AddInventarioItemState> {
           fallback: 'No se pudo cargar el catalogo de juegos.',
         ),
       );
+    }
+  }
+
+  void clearBarcodeLookup() {
+    state = state.copyWith(clearBarcodeLookupState: true);
+  }
+
+  Future<BarcodeLookupResult> lookupGameByBarcode(String barcode) async {
+    state = state.copyWith(
+      isLookingUpBarcode: true,
+      lastScannedBarcode: barcode,
+      clearBarcodeLookupState: true,
+    );
+
+    try {
+      final juego = await ref
+          .read(juegosRepositoryProvider)
+          .getJuegoByBarcode(barcode);
+      final updatedGames = [
+        juego,
+        ...state.juegos.where((existingGame) => existingGame.id != juego.id),
+      ];
+
+      state = state.copyWith(
+        juegos: updatedGames,
+        isLookingUpBarcode: false,
+        hasLoadedCatalog: true,
+        lastScannedBarcode: barcode,
+        barcodeLookupJuego: juego,
+      );
+
+      return BarcodeLookupResult.found(barcode: barcode, juego: juego);
+    } catch (error) {
+      if (error is ApiException && error.statusCode == 404) {
+        state = state.copyWith(
+          isLookingUpBarcode: false,
+          lastScannedBarcode: barcode,
+          barcodeNotFound: true,
+        );
+
+        return BarcodeLookupResult.notFound(barcode: barcode);
+      }
+
+      final message = _errorMessage(
+        error,
+        fallback: 'No se pudo consultar el juego por codigo de barras.',
+      );
+
+      state = state.copyWith(
+        isLookingUpBarcode: false,
+        lastScannedBarcode: barcode,
+        barcodeLookupErrorMessage: message,
+      );
+
+      return BarcodeLookupResult.error(barcode: barcode, message: message);
     }
   }
 

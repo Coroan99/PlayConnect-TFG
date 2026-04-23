@@ -8,6 +8,7 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../games/domain/juego_catalogo.dart';
 import '../../domain/inventario_item.dart';
 import '../controllers/add_inventario_item_controller.dart';
+import 'barcode_scanner_screen.dart';
 
 enum AddGameMode { existente, manual }
 
@@ -90,7 +91,9 @@ class _AddInventoryItemScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (state.isLoadingCatalog || state.isSubmitting) ...[
+                  if (state.isLoadingCatalog ||
+                      state.isLookingUpBarcode ||
+                      state.isSubmitting) ...[
                     const LinearProgressIndicator(),
                     const SizedBox(height: 16),
                   ],
@@ -117,35 +120,89 @@ class _AddInventoryItemScreenState
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(18),
-                      child: SegmentedButton<AddGameMode>(
-                        segments: const [
-                          ButtonSegment(
-                            value: AddGameMode.existente,
-                            icon: Icon(Icons.search),
-                            label: Text('Buscar existente'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SegmentedButton<AddGameMode>(
+                            segments: const [
+                              ButtonSegment(
+                                value: AddGameMode.existente,
+                                icon: Icon(Icons.search),
+                                label: Text('Buscar existente'),
+                              ),
+                              ButtonSegment(
+                                value: AddGameMode.manual,
+                                icon: Icon(Icons.add_box_outlined),
+                                label: Text('Crear manualmente'),
+                              ),
+                            ],
+                            selected: {_mode},
+                            onSelectionChanged: (selection) {
+                              setState(() {
+                                _mode = selection.first;
+                                if (_mode == AddGameMode.manual &&
+                                    _nameController.text.trim().isEmpty &&
+                                    _searchController.text.trim().isNotEmpty) {
+                                  _nameController.text = _searchController.text
+                                      .trim();
+                                }
+                              });
+                            },
                           ),
-                          ButtonSegment(
-                            value: AddGameMode.manual,
-                            icon: Icon(Icons.add_box_outlined),
-                            label: Text('Crear manualmente'),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              FilledButton.icon(
+                                onPressed:
+                                    state.isLookingUpBarcode ||
+                                        state.isSubmitting
+                                    ? null
+                                    : _openScannerAndResolve,
+                                icon: const Icon(Icons.qr_code_scanner),
+                                label: const Text('Escanear codigo'),
+                              ),
+                              if (state.lastScannedBarcode != null)
+                                OutlinedButton.icon(
+                                  onPressed:
+                                      state.isLookingUpBarcode ||
+                                          state.isSubmitting
+                                      ? null
+                                      : () => _resolveBarcode(
+                                          state.lastScannedBarcode!,
+                                        ),
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Reconsultar codigo'),
+                                ),
+                            ],
                           ),
                         ],
-                        selected: {_mode},
-                        onSelectionChanged: (selection) {
-                          setState(() {
-                            _mode = selection.first;
-                            if (_mode == AddGameMode.manual &&
-                                _nameController.text.trim().isEmpty &&
-                                _searchController.text.trim().isNotEmpty) {
-                              _nameController.text = _searchController.text
-                                  .trim();
-                            }
-                          });
-                        },
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
+                  if (state.lastScannedBarcode != null &&
+                      (state.barcodeNotFound ||
+                          state.barcodeLookupJuego != null ||
+                          state.barcodeLookupErrorMessage != null)) ...[
+                    _BarcodeLookupStatusCard(
+                      state: state,
+                      onRetryLookup: () =>
+                          _resolveBarcode(state.lastScannedBarcode!),
+                      onScanAgain: _openScannerAndResolve,
+                      onCreateManual: state.barcodeNotFound
+                          ? () {
+                              setState(() {
+                                _applyBarcodeNotFound(
+                                  state.lastScannedBarcode!,
+                                );
+                              });
+                            }
+                          : null,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   if (_mode == AddGameMode.existente)
                     _ExistingGameSection(
                       searchController: _searchController,
@@ -298,6 +355,71 @@ class _AddInventoryItemScreenState
     }
   }
 
+  Future<void> _openScannerAndResolve() async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+
+    if (!mounted || barcode == null || barcode.trim().isEmpty) {
+      return;
+    }
+
+    await _resolveBarcode(barcode.trim());
+  }
+
+  Future<void> _resolveBarcode(String barcode) async {
+    final result = await ref
+        .read(addInventarioItemControllerProvider.notifier)
+        .lookupGameByBarcode(barcode);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result.isFound && result.juego != null) {
+      _applyExistingGame(result.juego!, barcode: barcode);
+      _showMessage('Juego encontrado en el catalogo.');
+      return;
+    }
+
+    if (result.isNotFound) {
+      setState(() {
+        _applyBarcodeNotFound(barcode);
+      });
+      _showMessage(
+        'No existe un juego con ese codigo. Completa el alta manual.',
+      );
+      return;
+    }
+
+    _showMessage(result.message ?? 'No se pudo consultar el codigo.');
+  }
+
+  void _applyExistingGame(JuegoCatalogo juego, {required String barcode}) {
+    setState(() {
+      _mode = AddGameMode.existente;
+      _selectedJuegoId = juego.id;
+      _searchController.text = juego.nombre;
+      _barcodeController.text = barcode;
+      _nameController.clear();
+      _platformController.clear();
+      _imageUrlController.clear();
+      _playersMinController.clear();
+      _playersMaxController.clear();
+      _durationController.clear();
+    });
+  }
+
+  void _applyBarcodeNotFound(String barcode) {
+    _mode = AddGameMode.manual;
+    _selectedJuegoId = null;
+    _barcodeController.text = barcode;
+    if (_nameController.text.trim().isEmpty &&
+        _searchController.text.trim().isNotEmpty) {
+      _nameController.text = _searchController.text.trim();
+    }
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -346,6 +468,121 @@ class _AddInventoryItemScreenState
     }
 
     return null;
+  }
+}
+
+class _BarcodeLookupStatusCard extends StatelessWidget {
+  const _BarcodeLookupStatusCard({
+    required this.state,
+    required this.onRetryLookup,
+    required this.onScanAgain,
+    this.onCreateManual,
+  });
+
+  final AddInventarioItemState state;
+  final VoidCallback onRetryLookup;
+  final VoidCallback onScanAgain;
+  final VoidCallback? onCreateManual;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final barcode = state.lastScannedBarcode ?? '';
+
+    late final Color background;
+    late final Color foreground;
+    late final IconData icon;
+    late final String title;
+    late final String description;
+
+    if (state.hasBarcodeLookupSuccess) {
+      background = colorScheme.tertiaryContainer;
+      foreground = colorScheme.onTertiaryContainer;
+      icon = Icons.check_circle_outline;
+      title = 'Juego encontrado';
+      description =
+          'El codigo $barcode corresponde a ${state.barcodeLookupJuego!.nombre}. Puedes anadirlo directamente al inventario.';
+    } else if (state.barcodeNotFound) {
+      background = colorScheme.secondaryContainer;
+      foreground = colorScheme.onSecondaryContainer;
+      icon = Icons.info_outline;
+      title = 'Codigo no encontrado';
+      description =
+          'No existe un juego registrado con el codigo $barcode. Se ha preparado el formulario manual con ese valor.';
+    } else {
+      background = colorScheme.errorContainer;
+      foreground = colorScheme.onErrorContainer;
+      icon = Icons.error_outline;
+      title = 'No se pudo consultar el codigo';
+      description =
+          state.barcodeLookupErrorMessage ??
+          'Ha ocurrido un error al consultar el codigo $barcode.';
+    }
+
+    return Card(
+      color: background,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: foreground),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: foreground,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        description,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: foreground),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: onScanAgain,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('Escanear otro'),
+                ),
+                if (!state.hasBarcodeLookupSuccess)
+                  OutlinedButton.icon(
+                    onPressed: onRetryLookup,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reintentar'),
+                  ),
+                if (onCreateManual != null)
+                  OutlinedButton.icon(
+                    onPressed: onCreateManual,
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Alta manual'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
