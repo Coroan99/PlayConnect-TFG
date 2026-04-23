@@ -9,6 +9,7 @@ import { ensureNotificacionesTable } from "./repositories/notificaciones.reposit
 import { ensureOfertasTable } from "./repositories/ofertas.repository.js";
 import { ensurePublicacionesTable } from "./repositories/publicaciones.repository.js";
 import { ensureUsuariosTable } from "./repositories/usuarios.repository.js";
+import authRoutes from "./routes/auth.routes.js";
 import inventarioRoutes from "./routes/inventario.routes.js";
 import interesesRoutes from "./routes/intereses.routes.js";
 import juegosRoutes from "./routes/juegos.routes.js";
@@ -61,6 +62,7 @@ app.get("/db-test", async (req, res) => {
 });
 
 app.use("/usuarios", usuariosRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/juegos", juegosRoutes);
 app.use("/api/inventario", inventarioRoutes);
