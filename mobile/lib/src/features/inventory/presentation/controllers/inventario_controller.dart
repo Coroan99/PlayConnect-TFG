@@ -99,6 +99,15 @@ class InventarioController extends Notifier<InventarioState> {
     await loadInventario(currentUsuarioId);
   }
 
+  void prependItem(InventarioItem item) {
+    final nextItems = [
+      item,
+      ...state.items.where((existingItem) => existingItem.id != item.id),
+    ];
+
+    state = state.copyWith(items: nextItems, clearError: true);
+  }
+
   String _errorMessage(Object error) {
     if (error is ApiException) {
       return error.message;

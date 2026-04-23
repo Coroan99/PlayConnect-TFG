@@ -21,13 +21,12 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
-    final isPublicationDetail = location.startsWith(
-      AppRoute.publicationDetail.path,
-    );
+    final detailTitle = _detailTitle(location);
+    final isDetailRoute = detailTitle != null;
 
     return Scaffold(
       appBar: AppBar(
-        leading: isPublicationDetail
+        leading: isDetailRoute
             ? IconButton(
                 tooltip: 'Volver',
                 onPressed: () {
@@ -41,9 +40,7 @@ class MainShell extends ConsumerWidget {
                 icon: const Icon(Icons.arrow_back),
               )
             : null,
-        title: Text(
-          isPublicationDetail ? 'Detalle de publicacion' : AppConfig.appName,
-        ),
+        title: Text(detailTitle ?? AppConfig.appName),
         actions: [
           IconButton(
             tooltip: 'Notificaciones',
@@ -64,7 +61,7 @@ class MainShell extends ConsumerWidget {
         ],
       ),
       body: SafeArea(child: child),
-      bottomNavigationBar: isPublicationDetail
+      bottomNavigationBar: isDetailRoute
           ? null
           : NavigationBar(
               selectedIndex: _selectedIndex(location),
@@ -119,5 +116,17 @@ class MainShell extends ConsumerWidget {
     }
 
     return 0;
+  }
+
+  String? _detailTitle(String location) {
+    if (location.startsWith(AppRoute.publicationDetail.path)) {
+      return 'Detalle de publicacion';
+    }
+
+    if (location.startsWith(AppRoute.inventoryAdd.path)) {
+      return 'Anadir juego';
+    }
+
+    return null;
   }
 }

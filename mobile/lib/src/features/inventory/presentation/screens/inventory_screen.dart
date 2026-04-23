@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../controllers/inventario_controller.dart';
@@ -67,14 +69,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             onRefresh: controller.refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(24),
               children: [
+                _InventoryHeader(
+                  state: state,
+                  onAddGame: () => _openAddGameFlow(),
+                ),
                 SizedBox(
-                  height: constraints.maxHeight,
-                  child: const EmptyState(
-                    icon: Icons.inventory_2_outlined,
-                    title: 'Inventario vacio',
-                    description:
-                        'Cuando añadas juegos a tu coleccion, apareceran aqui.',
+                  height: constraints.maxHeight > 220
+                      ? constraints.maxHeight - 220
+                      : 220,
+                  child: _InventoryEmptyState(
+                    onAddGame: () => _openAddGameFlow(),
                   ),
                 ),
               ],
@@ -91,7 +97,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               if (index == 0) {
-                return _InventoryHeader(state: state);
+                return _InventoryHeader(
+                  state: state,
+                  onAddGame: () => _openAddGameFlow(),
+                );
               }
 
               final item = state.items[index - 1];
@@ -127,12 +136,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     _lastRequestedUsuarioId = usuarioId;
     ref.read(inventarioControllerProvider.notifier).loadInventario(usuarioId);
   }
+
+  Future<void> _openAddGameFlow() async {
+    final created = await context.pushNamed<bool>(AppRoute.inventoryAdd.name);
+
+    if (!mounted || created != true) {
+      return;
+    }
+
+    await ref.read(inventarioControllerProvider.notifier).refresh();
+  }
 }
 
 class _InventoryHeader extends StatelessWidget {
-  const _InventoryHeader({required this.state});
+  const _InventoryHeader({required this.state, required this.onAddGame});
 
   final InventarioState state;
+  final VoidCallback onAddGame;
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +194,15 @@ class _InventoryHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 18),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: onAddGame,
+                icon: const Icon(Icons.add),
+                label: const Text('Anadir juego'),
+              ),
+            ),
+            const SizedBox(height: 18),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -187,6 +216,34 @@ class _InventoryHeader extends StatelessWidget {
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InventoryEmptyState extends StatelessWidget {
+  const _InventoryEmptyState({required this.onAddGame});
+
+  final VoidCallback onAddGame;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const EmptyState(
+            icon: Icons.inventory_2_outlined,
+            title: 'Inventario vacio',
+            description:
+                'Cuando anadas juegos a tu coleccion, apareceran aqui.',
+          ),
+          FilledButton.icon(
+            onPressed: onAddGame,
+            icon: const Icon(Icons.add),
+            label: const Text('Anadir primer juego'),
+          ),
+        ],
       ),
     );
   }

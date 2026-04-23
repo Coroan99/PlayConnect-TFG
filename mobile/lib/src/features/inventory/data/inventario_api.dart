@@ -7,6 +7,25 @@ class InventarioApi {
 
   final ApiClient _client;
 
+  Future<InventarioItem> createInventarioItem({
+    required String usuarioId,
+    required String juegoId,
+    required String estado,
+    double? precio,
+  }) async {
+    final response = await _client.post(
+      'inventario',
+      data: {
+        'usuario_id': usuarioId,
+        'juego_id': juegoId,
+        'estado': estado,
+        'precio': precio?.toStringAsFixed(2),
+      },
+    );
+
+    return InventarioItem.fromJson(_asJsonMap(response.data));
+  }
+
   Future<List<InventarioItem>> fetchInventarioByUsuario(
     String usuarioId,
   ) async {
@@ -14,6 +33,18 @@ class InventarioApi {
     final items = _asJsonList(response.data);
 
     return items.map(InventarioItem.fromJson).toList();
+  }
+
+  Map<String, Object?> _asJsonMap(Object? payload) {
+    if (payload is Map<String, Object?>) {
+      return payload;
+    }
+
+    if (payload is Map) {
+      return Map<String, Object?>.from(payload);
+    }
+
+    throw const ApiException('La API devolvio un inventario inesperado.');
   }
 
   List<Map<String, Object?>> _asJsonList(Object? payload) {

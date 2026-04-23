@@ -17,6 +17,20 @@ class InventarioRepository {
 
   final InventarioApi _api;
 
+  Future<InventarioItem> createInventarioItem({
+    required String usuarioId,
+    required String juegoId,
+    required String estado,
+    double? precio,
+  }) {
+    return _api.createInventarioItem(
+      usuarioId: usuarioId,
+      juegoId: juegoId,
+      estado: estado,
+      precio: precio,
+    );
+  }
+
   Future<List<InventarioItem>> getInventarioByUsuario(String usuarioId) {
     return _api.fetchInventarioByUsuario(usuarioId);
   }
