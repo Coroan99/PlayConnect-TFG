@@ -60,6 +60,10 @@ class ApiClient {
     return _request(() => _dio.post<Object?>(_normalize(path), data: data));
   }
 
+  Future<ApiResponse> patch(String path, {Object? data}) {
+    return _request(() => _dio.patch<Object?>(_normalize(path), data: data));
+  }
+
   Future<ApiResponse> _request(
     Future<Response<Object?>> Function() request,
   ) async {

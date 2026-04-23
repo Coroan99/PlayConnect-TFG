@@ -27,6 +27,15 @@ class MainShell extends ConsumerWidget {
         title: const Text(AppConfig.appName),
         actions: [
           IconButton(
+            tooltip: 'Notificaciones',
+            onPressed: () {
+              if (location != AppRoute.notifications.path) {
+                context.go(AppRoute.notifications.path);
+              }
+            },
+            icon: const Icon(Icons.notifications_outlined),
+          ),
+          IconButton(
             tooltip: 'Cerrar sesion',
             onPressed: () {
               ref.read(authControllerProvider.notifier).logout();
@@ -78,6 +87,10 @@ class MainShell extends ConsumerWidget {
 
     if (location.startsWith(AppRoute.inventory.path)) {
       return 2;
+    }
+
+    if (location.startsWith(AppRoute.notifications.path)) {
+      return 0;
     }
 
     if (location.startsWith(AppRoute.profile.path)) {
