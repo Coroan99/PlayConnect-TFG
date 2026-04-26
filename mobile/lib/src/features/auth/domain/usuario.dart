@@ -4,6 +4,7 @@ class Usuario {
     required this.nombre,
     required this.email,
     required this.tipo,
+    this.ciudad,
     this.createdAt,
   });
 
@@ -11,6 +12,7 @@ class Usuario {
   final String nombre;
   final String email;
   final String tipo;
+  final String? ciudad;
   final DateTime? createdAt;
 
   String get tipoLabel {
@@ -28,6 +30,9 @@ class Usuario {
       nombre: json['nombre'] as String? ?? '',
       email: json['email'] as String? ?? '',
       tipo: json['tipo'] as String? ?? 'normal',
+      ciudad: _readNullableString(
+        json['ciudad'] ?? _readMap(json['ubicacion'])['ciudad'],
+      ),
       createdAt: createdAtValue is String
           ? DateTime.tryParse(createdAtValue)
           : null,
@@ -40,7 +45,29 @@ class Usuario {
       'nombre': nombre,
       'email': email,
       'tipo': tipo,
+      if (ciudad != null) 'ciudad': ciudad,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
   }
+}
+
+Map<String, Object?> _readMap(Object? value) {
+  if (value is Map<String, Object?>) {
+    return value;
+  }
+
+  if (value is Map) {
+    return Map<String, Object?>.from(value);
+  }
+
+  return const {};
+}
+
+String? _readNullableString(Object? value) {
+  if (value == null) {
+    return null;
+  }
+
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
 }

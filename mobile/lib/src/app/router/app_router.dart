@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
-import '../../features/games/presentation/screens/games_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/inventory/presentation/screens/add_inventory_item_screen.dart';
 import '../../features/inventory/presentation/screens/edit_inventory_item_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/market/presentation/screens/market_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/offers/presentation/screens/publication_detail_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -20,7 +20,7 @@ enum AppRoute {
   login('/login'),
   register('/register'),
   home('/home'),
-  games('/games'),
+  market('/market'),
   inventory('/inventory'),
   inventoryAdd('/inventory/add'),
   inventoryEdit('/inventory/edit'),
@@ -88,9 +88,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const HomeScreen(),
           ),
           GoRoute(
-            path: AppRoute.games.path,
-            name: AppRoute.games.name,
-            builder: (context, state) => const GamesScreen(),
+            path: AppRoute.market.path,
+            name: AppRoute.market.name,
+            builder: (context, state) => const MarketScreen(),
           ),
           GoRoute(
             path: AppRoute.inventory.path,

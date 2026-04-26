@@ -10,6 +10,9 @@ class PublicacionCard extends StatelessWidget {
     required this.isSubmittingInterest,
     this.onTap,
     required this.onInterestPressed,
+    this.cityLabel,
+    this.onOfferPressed,
+    this.isSubmittingOffer = false,
     super.key,
   });
 
@@ -19,6 +22,9 @@ class PublicacionCard extends StatelessWidget {
   final bool isSubmittingInterest;
   final VoidCallback? onTap;
   final VoidCallback? onInterestPressed;
+  final String? cityLabel;
+  final VoidCallback? onOfferPressed;
+  final bool isSubmittingOffer;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +71,7 @@ class PublicacionCard extends StatelessWidget {
                             _InfoChip(
                               label: publicacion.inventario.estadoLabel,
                             ),
+                            if (cityLabel != null) _InfoChip(label: cityLabel!),
                           ],
                         ),
                       ],
@@ -114,6 +121,19 @@ class PublicacionCard extends StatelessWidget {
                         isSubmitting: isSubmittingInterest,
                         onPressed: onInterestPressed,
                       ),
+                      if (onOfferPressed != null)
+                        FilledButton.icon(
+                          onPressed: isSubmittingOffer ? null : onOfferPressed,
+                          icon: isSubmittingOffer
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.local_offer_outlined),
+                          label: const Text('Enviar oferta'),
+                        ),
                     ],
                   ),
                 ],

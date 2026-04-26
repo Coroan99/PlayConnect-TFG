@@ -13,7 +13,7 @@ class MainShell extends ConsumerWidget {
 
   static const _tabs = [
     AppRoute.home,
-    AppRoute.games,
+    AppRoute.market,
     AppRoute.inventory,
     AppRoute.profile,
   ];
@@ -79,9 +79,9 @@ class MainShell extends ConsumerWidget {
                   label: 'Inicio',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.sports_esports_outlined),
-                  selectedIcon: Icon(Icons.sports_esports),
-                  label: 'Juegos',
+                  icon: Icon(Icons.storefront_outlined),
+                  selectedIcon: Icon(Icons.storefront),
+                  label: 'Mercado',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.inventory_2_outlined),
@@ -99,7 +99,7 @@ class MainShell extends ConsumerWidget {
   }
 
   int _selectedIndex(String location) {
-    if (location.startsWith(AppRoute.games.path)) {
+    if (location.startsWith(AppRoute.market.path)) {
       return 1;
     }
 

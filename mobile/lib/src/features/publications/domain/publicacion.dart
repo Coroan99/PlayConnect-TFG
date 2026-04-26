@@ -78,15 +78,32 @@ class PublicacionInventario {
 }
 
 class PublicacionUsuario {
-  const PublicacionUsuario({required this.id, required this.nombre});
+  const PublicacionUsuario({
+    required this.id,
+    required this.nombre,
+    this.ciudad,
+  });
 
   final String id;
   final String nombre;
+  final String? ciudad;
+
+  bool get hasCiudad => ciudad != null && ciudad!.trim().isNotEmpty;
+
+  String ciudadOrDefault([String fallbackCity = 'Córdoba']) {
+    final value = ciudad?.trim();
+    return value == null || value.isEmpty ? fallbackCity : value;
+  }
 
   factory PublicacionUsuario.fromJson(Map<String, Object?> json) {
+    final ubicacion = _readNullableMap(json['ubicacion']);
+
     return PublicacionUsuario(
       id: _readString(json['id']),
       nombre: _readString(json['nombre']),
+      ciudad: _readNullableString(
+        json['ciudad'] ?? json['localidad'] ?? ubicacion?['ciudad'],
+      ),
     );
   }
 }
@@ -200,6 +217,22 @@ Map<String, Object?> _readMap(Object? value) {
   }
 
   return const {};
+}
+
+Map<String, Object?>? _readNullableMap(Object? value) {
+  if (value == null) {
+    return null;
+  }
+
+  if (value is Map<String, Object?>) {
+    return value;
+  }
+
+  if (value is Map) {
+    return Map<String, Object?>.from(value);
+  }
+
+  return null;
 }
 
 String _readString(Object? value) {

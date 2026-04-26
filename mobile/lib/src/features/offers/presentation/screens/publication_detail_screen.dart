@@ -405,11 +405,13 @@ class _OwnerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ciudad = publicacion.usuario.ciudadOrDefault();
+
     return Card(
       child: ListTile(
         leading: const CircleAvatar(child: Icon(Icons.person_outline)),
         title: Text(publicacion.usuario.nombre),
-        subtitle: Text('Propietario de la publicación'),
+        subtitle: Text('Propietario de la publicación · $ciudad'),
       ),
     );
   }
