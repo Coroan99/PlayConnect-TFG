@@ -25,7 +25,6 @@ class _EditInventoryItemScreenState
   final _publicationDescriptionController = TextEditingController();
 
   InventarioEstado? _selectedEstado;
-  bool _createPublication = false;
   String? _hydratedSnapshotKey;
   String? _loadedItemId;
 
@@ -83,7 +82,7 @@ class _EditInventoryItemScreenState
     final isEnVenta = effectiveEstado == InventarioEstado.enVenta;
     final canCreatePublication = effectiveEstado.puedePublicarse;
     final hasPublication = item.tienePublicacion;
-    final shouldManagePublication = hasPublication || _createPublication;
+    final shouldManagePublication = hasPublication || canCreatePublication;
     final publicationVisibilityLabel = canCreatePublication
         ? 'Visible en el feed principal'
         : 'Oculta en el feed mientras este en coleccion';
@@ -135,11 +134,6 @@ class _EditInventoryItemScreenState
 
                                 setState(() {
                                   _selectedEstado = value;
-
-                                  if (!value.puedePublicarse &&
-                                      !hasPublication) {
-                                    _createPublication = false;
-                                  }
                                 });
                               },
                         validator: (value) {
@@ -191,35 +185,25 @@ class _EditInventoryItemScreenState
                 _FormSection(
                   title: 'Publicacion asociada',
                   subtitle:
-                      'Crea o actualiza la descripcion que se mostrara en la comunidad desde este mismo flujo.',
+                      'Cuando el item queda Visible o En venta, PlayConnect garantiza una publicacion asociada desde este mismo flujo.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (hasPublication)
+                      if (shouldManagePublication)
                         _PublicationStatusCard(
-                          title: 'Publicacion ya creada',
+                          title: hasPublication
+                              ? 'Publicacion ya creada'
+                              : 'Se creara una publicacion al guardar',
                           description: publicationVisibilityLabel,
                           icon: canCreatePublication
                               ? Icons.public
                               : Icons.visibility_off_outlined,
                         )
                       else
-                        SwitchListTile.adaptive(
-                          value: _createPublication,
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Crear publicacion para este item'),
-                          subtitle: Text(
-                            canCreatePublication
-                                ? 'Activa esta opcion para publicar el juego directamente desde el inventario.'
-                                : 'Primero cambia el estado a Visible o En venta para poder publicar.',
-                          ),
-                          onChanged: !canCreatePublication || state.isSubmitting
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _createPublication = value;
-                                  });
-                                },
+                        const _HelperBanner(
+                          icon: Icons.inventory_2_outlined,
+                          message:
+                              'Mientras el item permanezca en coleccion y no tenga publicacion previa, no se publicara en la comunidad.',
                         ),
                       if (shouldManagePublication) ...[
                         const SizedBox(height: 12),
@@ -232,6 +216,8 @@ class _EditInventoryItemScreenState
                             labelText: 'Descripcion de la publicacion',
                             alignLabelWithHint: true,
                             prefixIcon: Icon(Icons.description_outlined),
+                            helperText:
+                                'Opcional. Si la dejas vacia, se mantiene la actual o se genera una base automatica.',
                           ),
                           validator: (_) =>
                               _validatePublicationDescription(item),
@@ -299,7 +285,6 @@ class _EditInventoryItemScreenState
 
     _hydratedSnapshotKey = snapshotKey;
     _selectedEstado = item.estado;
-    _createPublication = item.tienePublicacion;
     _priceController.text = item.precio?.toStringAsFixed(2) ?? '';
     _publicationDescriptionController.text =
         item.publicacion?.descripcion ?? '';
@@ -356,7 +341,6 @@ class _EditInventoryItemScreenState
           item: item,
           estado: estado,
           precio: precio,
-          createPublication: !item.tienePublicacion && _createPublication,
           publicationDescription: _publicationDescriptionController.text,
         );
 
@@ -405,17 +389,15 @@ class _EditInventoryItemScreenState
   }
 
   String? _validatePublicationDescription(InventarioItem item) {
-    final shouldValidate = item.tienePublicacion || _createPublication;
+    final shouldValidate =
+        item.tienePublicacion ||
+        (_selectedEstado ?? item.estado).puedePublicarse;
 
     if (!shouldValidate) {
       return null;
     }
 
     final value = _publicationDescriptionController.text.trim();
-
-    if (value.isEmpty) {
-      return 'La descripcion es obligatoria';
-    }
 
     if (value.length > 1000) {
       return 'La descripcion no puede superar los 1000 caracteres';
@@ -496,7 +478,7 @@ class _GameSummaryCard extends StatelessWidget {
                   Text(
                     item.tienePublicacion
                         ? 'La publicacion asociada puede mantenerse sincronizada desde esta pantalla.'
-                        : 'Puedes ajustar el estado, el precio y, si quieres, crear la publicacion asociada.',
+                        : 'Puedes ajustar el estado, el precio y publicar el juego directamente desde el inventario.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),

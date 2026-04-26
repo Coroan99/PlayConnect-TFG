@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
@@ -63,6 +64,9 @@ class PublicacionesController extends Notifier<PublicacionesState> {
   }
 
   Future<void> loadPublicaciones() async {
+    _debugLog(
+      'PublicacionesController.loadPublicaciones -> loading=true, anteriores=${state.publicaciones.length}',
+    );
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
@@ -70,15 +74,22 @@ class PublicacionesController extends Notifier<PublicacionesState> {
           .read(publicacionesRepositoryProvider)
           .getPublicaciones();
 
+      _debugLog(
+        'PublicacionesController.loadPublicaciones -> loading=false, publicaciones=${publicaciones.length}',
+      );
       state = state.copyWith(
         publicaciones: publicaciones,
         isLoading: false,
         clearError: true,
       );
     } catch (error) {
+      final message = _errorMessage(error);
+      _debugLog(
+        'PublicacionesController.loadPublicaciones -> loading=false, error=$message',
+      );
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _errorMessage(error),
+        errorMessage: message,
       );
     }
   }
@@ -133,5 +144,12 @@ class PublicacionesController extends Notifier<PublicacionesState> {
     }
 
     return 'No se pudo completar la operacion.';
+  }
+
+  void _debugLog(String message) {
+    assert(() {
+      debugPrint(message);
+      return true;
+    }());
   }
 }

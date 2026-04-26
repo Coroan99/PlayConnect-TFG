@@ -111,24 +111,16 @@ class EditInventarioItemController extends Notifier<EditInventarioItemState> {
     required InventarioItem item,
     required InventarioEstado estado,
     double? precio,
-    required bool createPublication,
     String? publicationDescription,
   }) async {
     state = state.copyWith(isSubmitting: true, clearError: true);
 
     final existingPublication = item.publicacion;
     final shouldSyncPublication =
-        existingPublication != null || createPublication;
+        existingPublication != null || estado.puedePublicarse;
     final normalizedDescription = publicationDescription?.trim();
-
-    if (shouldSyncPublication &&
-        (normalizedDescription == null || normalizedDescription.isEmpty)) {
-      state = state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'La descripcion de la publicacion es obligatoria.',
-      );
-      return state.errorMessage;
-    }
+    final hasDescription =
+        normalizedDescription != null && normalizedDescription.isNotEmpty;
 
     try {
       final inventarioRepository = ref.read(inventarioRepositoryProvider);
@@ -142,17 +134,21 @@ class EditInventarioItemController extends Notifier<EditInventarioItemState> {
         precio: precio,
       );
 
-      if (shouldSyncPublication) {
-        if (existingPublication == null) {
+      if (shouldSyncPublication && hasDescription) {
+        final description = normalizedDescription;
+        final publicationId =
+            updatedItem.publicacion?.id ?? existingPublication?.id;
+
+        if (publicationId == null) {
           await publicacionesRepository.createPublicacion(
             inventarioId: updatedItem.id,
-            descripcion: normalizedDescription!,
+            descripcion: description,
           );
         } else {
           await publicacionesRepository.updatePublicacion(
-            publicacionId: existingPublication.id,
+            publicacionId: publicationId,
             inventarioId: updatedItem.id,
-            descripcion: normalizedDescription!,
+            descripcion: description,
           );
         }
 
@@ -184,6 +180,12 @@ class EditInventarioItemController extends Notifier<EditInventarioItemState> {
   }
 
   Future<void> _syncRelatedState(InventarioItem item) async {
+    try {
+      await ref.read(inventarioControllerProvider.notifier).refresh();
+    } catch (_) {
+      // El detalle local ya se actualizo; el refresco completo es secundario.
+    }
+
     try {
       await ref.read(publicacionesControllerProvider.notifier).refresh();
     } catch (_) {

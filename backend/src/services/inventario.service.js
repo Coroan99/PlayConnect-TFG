@@ -16,10 +16,15 @@ import {
   insertInventario,
   updateInventario,
 } from "../repositories/inventario.repository.js";
-import { ensurePublicacionesTable } from "../repositories/publicaciones.repository.js";
+import {
+  ensurePublicacionesTable,
+  generatePublicacionId,
+  insertPublicacion,
+} from "../repositories/publicaciones.repository.js";
 
 const DUPLICATE_ENTRY_ERROR_CODE = "ER_DUP_ENTRY";
 const FOREIGN_KEY_ERROR_CODE = "ER_NO_REFERENCED_ROW_2";
+const PUBLIC_INVENTARIO_STATES = new Set(["visible", "en_venta"]);
 
 const ensureUsuarioExists = async (usuarioId) => {
   const usuario = await findUsuarioReferenceById(usuarioId);
@@ -47,6 +52,56 @@ const mapPersistenceError = (error) => {
   }
 
   throw error;
+};
+
+const buildAutoPublicacionDescription = (inventario) => {
+  const gameName = inventario.juego?.nombre?.trim() || "Juego";
+  const platform = inventario.juego?.plataforma?.trim();
+  const subject = platform ? `${gameName} para ${platform}` : gameName;
+
+  if (inventario.estado === "en_venta") {
+    const rawPrice = inventario.precio == null ? null : Number(inventario.precio);
+    const priceLabel = Number.isFinite(rawPrice)
+      ? ` por ${rawPrice.toFixed(2)} EUR`
+      : "";
+
+    return `${subject} en venta en PlayConnect${priceLabel}.`;
+  }
+
+  return `${subject} disponible para intercambio en PlayConnect.`;
+};
+
+const ensurePublicacionForInventario = async (inventario) => {
+  if (
+    !inventario ||
+    inventario.publicacion ||
+    !PUBLIC_INVENTARIO_STATES.has(inventario.estado)
+  ) {
+    return;
+  }
+
+  const publicacionId = await generatePublicacionId();
+
+  if (!publicacionId) {
+    throw new AppError(
+      "No se pudo generar el identificador de la publicación",
+      500,
+    );
+  }
+
+  try {
+    await insertPublicacion({
+      id: publicacionId,
+      inventario_id: inventario.id,
+      descripcion: buildAutoPublicacionDescription(inventario),
+    });
+  } catch (error) {
+    if (error?.code === DUPLICATE_ENTRY_ERROR_CODE) {
+      return;
+    }
+
+    throw error;
+  }
 };
 
 export const listInventario = async () => {
@@ -104,6 +159,9 @@ export const createInventarioItem = async (payload) => {
     mapPersistenceError(error);
   }
 
+  const createdInventario = await getInventarioDetail(inventarioId);
+  await ensurePublicacionForInventario(createdInventario);
+
   return getInventarioDetail(inventarioId);
 };
 
@@ -127,6 +185,9 @@ export const updateInventarioItem = async (id, payload) => {
   } catch (error) {
     mapPersistenceError(error);
   }
+
+  const updatedInventario = await getInventarioDetail(normalizedId);
+  await ensurePublicacionForInventario(updatedInventario);
 
   return getInventarioDetail(normalizedId);
 };

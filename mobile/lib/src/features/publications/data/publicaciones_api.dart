@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/publicacion.dart';
@@ -10,6 +12,9 @@ class PublicacionesApi {
   Future<List<Publicacion>> fetchPublicaciones() async {
     final response = await _client.get('publicaciones');
     final items = _asJsonList(response.data);
+    _debugLog(
+      'PublicacionesApi.fetchPublicaciones -> items=${items.length}',
+    );
 
     return items.map(Publicacion.fromJson).toList();
   }
@@ -88,5 +93,12 @@ class PublicacionesApi {
     return payload.map((item) {
       return _asJsonMap(item);
     }).toList();
+  }
+
+  void _debugLog(String message) {
+    assert(() {
+      debugPrint(message);
+      return true;
+    }());
   }
 }

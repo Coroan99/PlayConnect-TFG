@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../games/data/juegos_repository.dart';
 import '../../../games/domain/juego_catalogo.dart';
+import '../../../publications/presentation/controllers/publicaciones_controller.dart';
 import '../../data/inventario_repository.dart';
 import '../../domain/inventario_item.dart';
 import 'inventario_controller.dart';
@@ -251,6 +252,7 @@ class AddInventarioItemController extends Notifier<AddInventarioItemState> {
       ref
           .read(inventarioControllerProvider.notifier)
           .upsertItem(item, prependWhenMissing: true);
+      await _syncRelatedState(item);
       state = state.copyWith(isSubmitting: false);
 
       return null;
@@ -304,6 +306,7 @@ class AddInventarioItemController extends Notifier<AddInventarioItemState> {
       ref
           .read(inventarioControllerProvider.notifier)
           .upsertItem(item, prependWhenMissing: true);
+      await _syncRelatedState(item);
       state = state.copyWith(
         juegos: [
           juego,
@@ -329,5 +332,17 @@ class AddInventarioItemController extends Notifier<AddInventarioItemState> {
     }
 
     return fallback;
+  }
+
+  Future<void> _syncRelatedState(InventarioItem item) async {
+    if (!item.puedePublicarse && !item.tienePublicacion) {
+      return;
+    }
+
+    try {
+      await ref.read(publicacionesControllerProvider.notifier).refresh();
+    } catch (_) {
+      // El alta del inventario no debe fallar por un refresco secundario.
+    }
   }
 }

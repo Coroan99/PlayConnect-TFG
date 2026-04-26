@@ -27,7 +27,6 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshIfIdle();
       _startAutoRefresh();
     });
   }
@@ -48,6 +47,13 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       publicacionesControllerProvider.notifier,
     );
     final marketController = ref.read(mercadoLocalControllerProvider.notifier);
+    final publicacionesOtrosUsuarios = publicacionesState.publicaciones
+        .where((publicacion) => publicacion.usuario.id != authState.usuario?.id)
+        .toList();
+
+    _debugLog(
+      'MarketScreen.build -> loading=${publicacionesState.isLoading}, total=${publicacionesState.publicaciones.length}, otros=${publicacionesOtrosUsuarios.length}, render=${marketView.publicaciones.length}, ciudad=${marketView.selectedCity}',
+    );
 
     if (publicacionesState.isLoading &&
         publicacionesState.publicaciones.isEmpty) {
@@ -63,9 +69,9 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     }
 
     final userName = authState.usuario?.nombre ?? 'jugador';
-    final hasAnyPublication = publicacionesState.publicaciones.any(
-      (publicacion) => publicacion.usuario.id != authState.usuario?.id,
-    );
+    final hasAnyPublication = publicacionesOtrosUsuarios.isNotEmpty;
+    final hasOnlyOwnPublications =
+        publicacionesState.publicaciones.isNotEmpty && !hasAnyPublication;
 
     return RefreshIndicator(
       onRefresh: publicacionesController.refresh,
@@ -95,10 +101,13 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                   if (!marketView.hasRealCityData) const _FallbackInfoCard(),
                   if (!marketView.hasRealCityData) const SizedBox(height: 18),
                   if (!hasAnyPublication)
-                    const _MarketEmptyState(
-                      title: 'Sin publicaciones en la comunidad',
-                      description:
-                          'Cuando otros usuarios publiquen juegos visibles o en venta, apareceran aqui.',
+                    _MarketEmptyState(
+                      title: hasOnlyOwnPublications
+                          ? 'Solo hay publicaciones tuyas'
+                          : 'Sin publicaciones en la comunidad',
+                      description: hasOnlyOwnPublications
+                          ? 'Mercado local solo muestra juegos de otros usuarios. Ahora mismo no hay publicaciones ajenas disponibles.'
+                          : 'Cuando otros usuarios publiquen juegos visibles o en venta, apareceran aqui.',
                     )
                   else if (marketView.publicaciones.isEmpty)
                     _MarketEmptyState(
@@ -226,6 +235,13 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
         ),
       );
   }
+}
+
+void _debugLog(String message) {
+  assert(() {
+    debugPrint(message);
+    return true;
+  }());
 }
 
 class _MarketHeader extends StatelessWidget {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -19,8 +20,12 @@ class PublicacionesRepository {
 
   final PublicacionesApi _api;
 
-  Future<List<Publicacion>> getPublicaciones() {
-    return _api.fetchPublicaciones();
+  Future<List<Publicacion>> getPublicaciones() async {
+    final publicaciones = await _api.fetchPublicaciones();
+    _debugLog(
+      'PublicacionesRepository.getPublicaciones -> publicaciones=${publicaciones.length}',
+    );
+    return publicaciones;
   }
 
   Future<Publicacion> getPublicacionById(String publicacionId) {
@@ -57,5 +62,12 @@ class PublicacionesRepository {
       inventarioId: inventarioId,
       descripcion: descripcion,
     );
+  }
+
+  void _debugLog(String message) {
+    assert(() {
+      debugPrint(message);
+      return true;
+    }());
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
@@ -67,16 +68,17 @@ final mercadoLocalViewProvider = Provider<MercadoLocalViewData>((ref) {
       .where((publicacion) => publicacion.usuario.id != currentUserId)
       .toList();
 
-  final availableCities = <String>{marketState.selectedCity};
-  var hasRealCityData = false;
+  final availableCities = <String>{};
+  final publicacionesConCiudad = <Publicacion>[];
 
   for (final publicacion in publicacionesOtrosUsuarios) {
     if (publicacion.usuario.hasCiudad) {
-      hasRealCityData = true;
+      publicacionesConCiudad.add(publicacion);
+      availableCities.add(publicacion.usuario.ciudadOrDefault());
     }
-
-    availableCities.add(publicacion.usuario.ciudadOrDefault(defaultMarketCity));
   }
+
+  final hasRealCityData = publicacionesConCiudad.isNotEmpty;
 
   if (availableCities.isEmpty) {
     availableCities.add(defaultMarketCity);
@@ -87,17 +89,23 @@ final mercadoLocalViewProvider = Provider<MercadoLocalViewData>((ref) {
 
   final selectedCity = sortedCities.firstWhere(
     (city) => _normalizeCity(city) == _normalizeCity(marketState.selectedCity),
-    orElse: () => defaultMarketCity,
+    orElse: () => sortedCities.first,
   );
 
-  final publicacionesFiltradas = publicacionesOtrosUsuarios.where((
-    publicacion,
-  ) {
-    return _normalizeCity(
-          publicacion.usuario.ciudadOrDefault(defaultMarketCity),
-        ) ==
-        _normalizeCity(selectedCity);
-  }).toList();
+  final publicacionesFiltradas = hasRealCityData
+      ? publicacionesOtrosUsuarios.where((publicacion) {
+          if (!publicacion.usuario.hasCiudad) {
+            return true;
+          }
+
+          return _normalizeCity(publicacion.usuario.ciudadOrDefault()) ==
+              _normalizeCity(selectedCity);
+        }).toList()
+      : publicacionesOtrosUsuarios;
+
+  _debugLog(
+    'MercadoLocalView -> total=${publicacionesState.publicaciones.length}, otros=${publicacionesOtrosUsuarios.length}, ciudadesReales=$hasRealCityData, ciudadSeleccionada=$selectedCity, visibles=${publicacionesFiltradas.length}',
+  );
 
   return MercadoLocalViewData(
     selectedCity: selectedCity,
@@ -180,4 +188,11 @@ String _normalizeCity(String value) {
       .replaceAll('í', 'i')
       .replaceAll('ó', 'o')
       .replaceAll('ú', 'u');
+}
+
+void _debugLog(String message) {
+  assert(() {
+    debugPrint(message);
+    return true;
+  }());
 }
