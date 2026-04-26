@@ -8,6 +8,7 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/games/presentation/screens/games_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/inventory/presentation/screens/add_inventory_item_screen.dart';
+import '../../features/inventory/presentation/screens/edit_inventory_item_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/offers/presentation/screens/publication_detail_screen.dart';
@@ -22,6 +23,7 @@ enum AppRoute {
   games('/games'),
   inventory('/inventory'),
   inventoryAdd('/inventory/add'),
+  inventoryEdit('/inventory/edit'),
   notifications('/notifications'),
   publicationDetail('/publicaciones'),
   profile('/profile');
@@ -99,6 +101,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoute.inventoryAdd.path,
             name: AppRoute.inventoryAdd.name,
             builder: (context, state) => const AddInventoryItemScreen(),
+          ),
+          GoRoute(
+            path: '${AppRoute.inventoryEdit.path}/:id',
+            name: AppRoute.inventoryEdit.name,
+            builder: (context, state) => EditInventoryItemScreen(
+              itemId: state.pathParameters['id'] ?? '',
+            ),
           ),
           GoRoute(
             path: AppRoute.notifications.path,

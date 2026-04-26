@@ -108,7 +108,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               return Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 760),
-                  child: InventarioItemCard(item: item),
+                  child: InventarioItemCard(
+                    item: item,
+                    onEdit: () => _openEditItemFlow(item.id),
+                    onOpenPublication: item.publicacion == null
+                        ? null
+                        : () => context.pushNamed(
+                            AppRoute.publicationDetail.name,
+                            pathParameters: {'id': item.publicacion!.id},
+                          ),
+                  ),
                 ),
               );
             },
@@ -146,6 +155,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     await ref.read(inventarioControllerProvider.notifier).refresh();
   }
+
+  Future<void> _openEditItemFlow(String itemId) async {
+    await context.pushNamed<bool>(
+      AppRoute.inventoryEdit.name,
+      pathParameters: {'id': itemId},
+    );
+  }
 }
 
 class _InventoryHeader extends StatelessWidget {
@@ -178,7 +194,7 @@ class _InventoryHeader extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Gestiona los juegos asociados a tu cuenta.',
+                        'Gestiona estado, precio y publicacion de tus juegos.',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),

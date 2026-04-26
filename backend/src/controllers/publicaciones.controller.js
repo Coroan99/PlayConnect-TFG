@@ -3,6 +3,7 @@ import {
   deletePublicacionById,
   getPublicacionDetail,
   listPublicaciones,
+  updatePublicacionById,
 } from "../services/publicaciones.service.js";
 import { isAppError } from "../utils/app-error.js";
 import { sendError, sendSuccess } from "../utils/response.js";
@@ -93,6 +94,24 @@ export const removePublicacion = async (req, res) => {
       error,
       "Error eliminando la publicación",
       "Error eliminando la publicación",
+    );
+  }
+};
+
+export const putPublicacion = async (req, res) => {
+  try {
+    const publicacion = await updatePublicacionById(req.params.id, req.body);
+
+    return sendSuccess(res, {
+      message: "Publicación actualizada correctamente",
+      data: publicacion,
+    });
+  } catch (error) {
+    return handleControllerError(
+      res,
+      error,
+      "Error actualizando la publicación",
+      "Error actualizando la publicación",
     );
   }
 };

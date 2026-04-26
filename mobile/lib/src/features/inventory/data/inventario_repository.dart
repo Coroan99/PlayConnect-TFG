@@ -34,4 +34,24 @@ class InventarioRepository {
   Future<List<InventarioItem>> getInventarioByUsuario(String usuarioId) {
     return _api.fetchInventarioByUsuario(usuarioId);
   }
+
+  Future<InventarioItem> getInventarioItemById(String itemId) {
+    return _api.fetchInventarioItemById(itemId);
+  }
+
+  Future<InventarioItem> updateInventarioItem({
+    required String itemId,
+    required String usuarioId,
+    required String juegoId,
+    required String estado,
+    double? precio,
+  }) {
+    return _api.updateInventarioItem(
+      itemId: itemId,
+      usuarioId: usuarioId,
+      juegoId: juegoId,
+      estado: estado,
+      precio: precio,
+    );
+  }
 }

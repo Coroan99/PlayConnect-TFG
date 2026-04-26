@@ -43,6 +43,31 @@ class PublicacionesApi {
     );
   }
 
+  Future<Publicacion> createPublicacion({
+    required String inventarioId,
+    required String descripcion,
+  }) async {
+    final response = await _client.post(
+      'publicaciones',
+      data: {'inventario_id': inventarioId, 'descripcion': descripcion},
+    );
+
+    return Publicacion.fromJson(_asJsonMap(response.data));
+  }
+
+  Future<Publicacion> updatePublicacion({
+    required String publicacionId,
+    required String inventarioId,
+    required String descripcion,
+  }) async {
+    final response = await _client.put(
+      'publicaciones/$publicacionId',
+      data: {'inventario_id': inventarioId, 'descripcion': descripcion},
+    );
+
+    return Publicacion.fromJson(_asJsonMap(response.data));
+  }
+
   Map<String, Object?> _asJsonMap(Object? payload) {
     if (payload is Map<String, Object?>) {
       return payload;

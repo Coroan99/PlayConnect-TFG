@@ -6,7 +6,6 @@ import {
 } from "../validators/inventario.validator.js";
 import {
   deleteInventario,
-  ensureInventarioTable,
   findAllInventario,
   findInventarioById,
   findInventarioByUsuarioId,
@@ -17,6 +16,7 @@ import {
   insertInventario,
   updateInventario,
 } from "../repositories/inventario.repository.js";
+import { ensurePublicacionesTable } from "../repositories/publicaciones.repository.js";
 
 const DUPLICATE_ENTRY_ERROR_CODE = "ER_DUP_ENTRY";
 const FOREIGN_KEY_ERROR_CODE = "ER_NO_REFERENCED_ROW_2";
@@ -50,14 +50,14 @@ const mapPersistenceError = (error) => {
 };
 
 export const listInventario = async () => {
-  await ensureInventarioTable();
+  await ensurePublicacionesTable();
   return findAllInventario();
 };
 
 export const getInventarioDetail = async (id) => {
   const normalizedId = validateInventarioId(id);
 
-  await ensureInventarioTable();
+  await ensurePublicacionesTable();
 
   const inventario = await findInventarioById(normalizedId);
 
@@ -71,21 +71,21 @@ export const getInventarioDetail = async (id) => {
 export const listInventarioByUsuario = async (usuarioId) => {
   const normalizedUsuarioId = validateUsuarioId(usuarioId);
 
-  await ensureInventarioTable();
+  await ensurePublicacionesTable();
   await ensureUsuarioExists(normalizedUsuarioId);
 
   return findInventarioByUsuarioId(normalizedUsuarioId);
 };
 
 export const listInventarioItemsEnVenta = async () => {
-  await ensureInventarioTable();
+  await ensurePublicacionesTable();
   return findInventarioEnVenta();
 };
 
 export const createInventarioItem = async (payload) => {
   const normalizedInventario = validateInventarioPayload(payload);
 
-  await ensureInventarioTable();
+  await ensurePublicacionesTable();
   await ensureUsuarioExists(normalizedInventario.usuario_id);
   await ensureJuegoExists(normalizedInventario.juego_id);
 
@@ -111,7 +111,7 @@ export const updateInventarioItem = async (id, payload) => {
   const normalizedId = validateInventarioId(id);
   const normalizedInventario = validateInventarioPayload(payload);
 
-  await ensureInventarioTable();
+  await ensurePublicacionesTable();
 
   const existingInventario = await findInventarioById(normalizedId);
 
@@ -134,7 +134,7 @@ export const updateInventarioItem = async (id, payload) => {
 export const deleteInventarioItem = async (id) => {
   const normalizedId = validateInventarioId(id);
 
-  await ensureInventarioTable();
+  await ensurePublicacionesTable();
 
   const existingInventario = await findInventarioById(normalizedId);
 

@@ -248,7 +248,9 @@ class AddInventarioItemController extends Notifier<AddInventarioItemState> {
             precio: precio,
           );
 
-      ref.read(inventarioControllerProvider.notifier).prependItem(item);
+      ref
+          .read(inventarioControllerProvider.notifier)
+          .upsertItem(item, prependWhenMissing: true);
       state = state.copyWith(isSubmitting: false);
 
       return null;
@@ -299,7 +301,9 @@ class AddInventarioItemController extends Notifier<AddInventarioItemState> {
             precio: precio,
           );
 
-      ref.read(inventarioControllerProvider.notifier).prependItem(item);
+      ref
+          .read(inventarioControllerProvider.notifier)
+          .upsertItem(item, prependWhenMissing: true);
       state = state.copyWith(
         juegos: [
           juego,

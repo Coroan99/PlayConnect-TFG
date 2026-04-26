@@ -100,10 +100,25 @@ class InventarioController extends Notifier<InventarioState> {
   }
 
   void prependItem(InventarioItem item) {
-    final nextItems = [
-      item,
-      ...state.items.where((existingItem) => existingItem.id != item.id),
-    ];
+    upsertItem(item, prependWhenMissing: true);
+  }
+
+  void upsertItem(InventarioItem item, {bool prependWhenMissing = false}) {
+    final currentIndex = state.items.indexWhere(
+      (existingItem) => existingItem.id == item.id,
+    );
+
+    final nextItems = [...state.items];
+
+    if (currentIndex == -1) {
+      if (prependWhenMissing) {
+        nextItems.insert(0, item);
+      } else {
+        nextItems.add(item);
+      }
+    } else {
+      nextItems[currentIndex] = item;
+    }
 
     state = state.copyWith(items: nextItems, clearError: true);
   }

@@ -127,6 +127,10 @@ class MainShell extends ConsumerWidget {
       return 'Anadir juego';
     }
 
+    if (location.startsWith(AppRoute.inventoryEdit.path)) {
+      return 'Editar inventario';
+    }
+
     return null;
   }
 }

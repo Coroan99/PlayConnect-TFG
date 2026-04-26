@@ -41,6 +41,9 @@ const BASE_SELECT = `
     j.jugadores_max AS juego_jugadores_max,
     j.duracion_minutos AS juego_duracion_minutos,
     j.descripcion AS juego_descripcion,
+    p.id AS publicacion_id,
+    p.descripcion AS publicacion_descripcion,
+    p.created_at AS publicacion_created_at,
     i.estado,
     i.precio,
     i.created_at,
@@ -48,6 +51,7 @@ const BASE_SELECT = `
   FROM inventario i
   INNER JOIN usuarios u ON u.id = i.usuario_id
   INNER JOIN juegos j ON j.id = i.juego_id
+  LEFT JOIN publicaciones p ON p.inventario_id = i.id
 `;
 
 let ensureTablePromise;
@@ -58,6 +62,13 @@ const mapInventarioRow = (row) => ({
   precio: row.precio,
   created_at: row.created_at,
   updated_at: row.updated_at,
+  publicacion: row.publicacion_id
+    ? {
+        id: row.publicacion_id,
+        descripcion: row.publicacion_descripcion,
+        created_at: row.publicacion_created_at,
+      }
+    : null,
   usuario: {
     id: row.usuario_id,
     nombre: row.usuario_nombre,

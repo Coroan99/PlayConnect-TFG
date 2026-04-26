@@ -7,6 +7,7 @@ import {
   findPublicacionById,
   generatePublicacionId,
   insertPublicacion,
+  updatePublicacion,
 } from "../repositories/publicaciones.repository.js";
 import {
   validatePublicacionId,
@@ -102,4 +103,27 @@ export const deletePublicacionById = async (id) => {
   return {
     id: normalizedId,
   };
+};
+
+export const updatePublicacionById = async (id, payload) => {
+  const normalizedId = validatePublicacionId(id);
+  const normalizedPublicacion = validatePublicacionPayload(payload);
+
+  await ensurePublicacionesTable();
+
+  const existingPublicacion = await findPublicacionById(normalizedId);
+
+  if (!existingPublicacion) {
+    throw new AppError("Publicación no encontrada", 404);
+  }
+
+  await ensureInventarioExists(normalizedPublicacion.inventario_id);
+
+  try {
+    await updatePublicacion(normalizedId, normalizedPublicacion);
+  } catch (error) {
+    mapPersistenceError(error);
+  }
+
+  return getPublicacionDetail(normalizedId);
 };

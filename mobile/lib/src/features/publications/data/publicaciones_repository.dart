@@ -36,4 +36,26 @@ class PublicacionesRepository {
       publicacionId: publicacionId,
     );
   }
+
+  Future<Publicacion> createPublicacion({
+    required String inventarioId,
+    required String descripcion,
+  }) {
+    return _api.createPublicacion(
+      inventarioId: inventarioId,
+      descripcion: descripcion,
+    );
+  }
+
+  Future<Publicacion> updatePublicacion({
+    required String publicacionId,
+    required String inventarioId,
+    required String descripcion,
+  }) {
+    return _api.updatePublicacion(
+      publicacionId: publicacionId,
+      inventarioId: inventarioId,
+      descripcion: descripcion,
+    );
+  }
 }

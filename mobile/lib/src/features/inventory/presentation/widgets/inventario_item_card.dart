@@ -5,19 +5,24 @@ import '../../domain/inventario_item.dart';
 class InventarioItemCard extends StatelessWidget {
   const InventarioItemCard({
     required this.item,
-    this.onChangeStatus,
-    this.onPublish,
+    this.onEdit,
+    this.onOpenPublication,
     super.key,
   });
 
   final InventarioItem item;
-  final VoidCallback? onChangeStatus;
-  final VoidCallback? onPublish;
+  final VoidCallback? onEdit;
+  final VoidCallback? onOpenPublication;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final precioLabel = item.precioLabel;
+    final publicationLabel = switch ((item.tienePublicacion, item.estado)) {
+      (true, InventarioEstado.coleccion) => 'Publicacion oculta',
+      (true, _) => 'Publicada en comunidad',
+      (false, _) => 'Sin publicacion',
+    };
 
     return Card(
       child: Padding(
@@ -53,29 +58,6 @@ class InventarioItemCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                PopupMenuButton<_InventarioAction>(
-                  tooltip: 'Acciones',
-                  onSelected: (action) {
-                    switch (action) {
-                      case _InventarioAction.changeStatus:
-                        onChangeStatus?.call();
-                      case _InventarioAction.publish:
-                        onPublish?.call();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: _InventarioAction.changeStatus,
-                      enabled: onChangeStatus != null,
-                      child: const Text('Cambiar estado'),
-                    ),
-                    PopupMenuItem(
-                      value: _InventarioAction.publish,
-                      enabled: onPublish != null && item.puedePublicarse,
-                      child: const Text('Publicar'),
-                    ),
-                  ],
-                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -95,6 +77,12 @@ class InventarioItemCard extends StatelessWidget {
                   ),
                 if (precioLabel != null)
                   _MetaItem(icon: Icons.sell_outlined, label: precioLabel),
+                _MetaItem(
+                  icon: item.tienePublicacion
+                      ? Icons.public_outlined
+                      : Icons.visibility_off_outlined,
+                  label: publicationLabel,
+                ),
               ],
             ),
             if (item.juego.descripcion != null) ...[
@@ -108,14 +96,30 @@ class InventarioItemCard extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Editar'),
+                ),
+                if (item.tienePublicacion)
+                  TextButton.icon(
+                    onPressed: onOpenPublication,
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text('Ver publicacion'),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 }
-
-enum _InventarioAction { changeStatus, publish }
 
 class _GameImage extends StatelessWidget {
   const _GameImage(this.imageUrl);

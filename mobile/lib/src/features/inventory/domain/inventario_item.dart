@@ -5,6 +5,7 @@ class InventarioItem {
     required this.precio,
     required this.createdAt,
     required this.updatedAt,
+    required this.publicacion,
     required this.usuario,
     required this.juego,
   });
@@ -14,11 +15,13 @@ class InventarioItem {
   final double? precio;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final InventarioPublicacion? publicacion;
   final InventarioUsuario usuario;
   final InventarioJuego juego;
 
   bool get estaEnVenta => estado == InventarioEstado.enVenta;
   bool get puedePublicarse => estado == InventarioEstado.visible || estaEnVenta;
+  bool get tienePublicacion => publicacion != null;
 
   String? get precioLabel {
     final value = precio;
@@ -31,14 +34,39 @@ class InventarioItem {
   }
 
   factory InventarioItem.fromJson(Map<String, Object?> json) {
+    final publicacionPayload = json['publicacion'];
+
     return InventarioItem(
       id: _readString(json['id']),
       estado: InventarioEstado.fromApi(_readString(json['estado'])),
       precio: _readDouble(json['precio']),
       createdAt: _readDate(json['created_at'] ?? json['createdAt']),
       updatedAt: _readDate(json['updated_at'] ?? json['updatedAt']),
+      publicacion: publicacionPayload == null
+          ? null
+          : InventarioPublicacion.fromJson(_readMap(publicacionPayload)),
       usuario: InventarioUsuario.fromJson(_readMap(json['usuario'])),
       juego: InventarioJuego.fromJson(_readMap(json['juego'])),
+    );
+  }
+}
+
+class InventarioPublicacion {
+  const InventarioPublicacion({
+    required this.id,
+    required this.descripcion,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String descripcion;
+  final DateTime? createdAt;
+
+  factory InventarioPublicacion.fromJson(Map<String, Object?> json) {
+    return InventarioPublicacion(
+      id: _readString(json['id']),
+      descripcion: _readString(json['descripcion']),
+      createdAt: _readDate(json['created_at'] ?? json['createdAt']),
     );
   }
 }
@@ -52,6 +80,9 @@ enum InventarioEstado {
 
   final String apiValue;
   final String label;
+
+  bool get puedePublicarse =>
+      this == InventarioEstado.visible || this == InventarioEstado.enVenta;
 
   static InventarioEstado fromApi(String value) {
     return InventarioEstado.values.firstWhere(

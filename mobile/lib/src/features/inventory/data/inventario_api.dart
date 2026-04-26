@@ -35,6 +35,31 @@ class InventarioApi {
     return items.map(InventarioItem.fromJson).toList();
   }
 
+  Future<InventarioItem> fetchInventarioItemById(String itemId) async {
+    final response = await _client.get('inventario/$itemId');
+    return InventarioItem.fromJson(_asJsonMap(response.data));
+  }
+
+  Future<InventarioItem> updateInventarioItem({
+    required String itemId,
+    required String usuarioId,
+    required String juegoId,
+    required String estado,
+    double? precio,
+  }) async {
+    final response = await _client.put(
+      'inventario/$itemId',
+      data: {
+        'usuario_id': usuarioId,
+        'juego_id': juegoId,
+        'estado': estado,
+        'precio': precio?.toStringAsFixed(2),
+      },
+    );
+
+    return InventarioItem.fromJson(_asJsonMap(response.data));
+  }
+
   Map<String, Object?> _asJsonMap(Object? payload) {
     if (payload is Map<String, Object?>) {
       return payload;

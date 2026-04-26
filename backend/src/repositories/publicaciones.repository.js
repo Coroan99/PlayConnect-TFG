@@ -88,7 +88,11 @@ export const generatePublicacionId = async () => {
 
 export const findAllPublicaciones = async () => {
   const pool = getPool();
-  const [rows] = await pool.query(`${BASE_SELECT} ORDER BY p.created_at DESC`);
+  const [rows] = await pool.query(
+    `${BASE_SELECT}
+     WHERE i.estado IN ('visible', 'en_venta')
+     ORDER BY p.created_at DESC`,
+  );
   return rows.map(mapPublicacionRow);
 };
 
@@ -117,6 +121,24 @@ export const insertPublicacion = async (publicacion) => {
       publicacion.descripcion,
     ],
   );
+};
+
+export const updatePublicacion = async (id, publicacion) => {
+  const pool = getPool();
+  const [result] = await pool.execute(
+    `UPDATE publicaciones
+     SET
+       inventario_id = ?,
+       descripcion = ?
+     WHERE id = ?`,
+    [
+      publicacion.inventario_id,
+      publicacion.descripcion,
+      id,
+    ],
+  );
+
+  return result.affectedRows;
 };
 
 export const deletePublicacion = async (id) => {
