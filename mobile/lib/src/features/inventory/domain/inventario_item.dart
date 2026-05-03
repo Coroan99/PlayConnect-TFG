@@ -118,6 +118,7 @@ class InventarioJuego {
     this.jugadoresMax,
     this.duracionMinutos,
     this.descripcion,
+    this.manualUrl,
   });
 
   final String id;
@@ -130,6 +131,7 @@ class InventarioJuego {
   final int? jugadoresMax;
   final int? duracionMinutos;
   final String? descripcion;
+  final String? manualUrl;
 
   String get tipoLabel {
     return switch (tipoJuego) {
@@ -178,6 +180,7 @@ class InventarioJuego {
         json['duracion_minutos'] ?? json['duracionMinutos'],
       ),
       descripcion: _readNullableString(json['descripcion']),
+      manualUrl: _readNullableString(json['manual_url'] ?? json['manualUrl']),
     );
   }
 }

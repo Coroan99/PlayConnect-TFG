@@ -33,6 +33,8 @@ class JuegosApi {
     int? jugadoresMin,
     int? jugadoresMax,
     int? duracionMinutos,
+    String? descripcion,
+    String? manualUrl,
   }) async {
     final response = await _client.post(
       'juegos',
@@ -45,6 +47,40 @@ class JuegosApi {
         'jugadores_min': jugadoresMin,
         'jugadores_max': jugadoresMax,
         'duracion_minutos': duracionMinutos,
+        'descripcion': descripcion,
+        'manual_url': manualUrl,
+      },
+    );
+
+    return JuegoCatalogo.fromJson(_asJsonMap(response.data));
+  }
+
+  Future<JuegoCatalogo> updateJuego({
+    required String juegoId,
+    required String nombre,
+    required JuegoTipo tipo,
+    String? codigoBarras,
+    String? imagenUrl,
+    String? plataforma,
+    int? jugadoresMin,
+    int? jugadoresMax,
+    int? duracionMinutos,
+    String? descripcion,
+    String? manualUrl,
+  }) async {
+    final response = await _client.put(
+      'juegos/$juegoId',
+      data: {
+        'nombre': nombre,
+        'tipo_juego': tipo.apiValue,
+        'codigo_barras': codigoBarras,
+        'imagen_url': imagenUrl,
+        'plataforma': plataforma,
+        'jugadores_min': jugadoresMin,
+        'jugadores_max': jugadoresMax,
+        'duracion_minutos': duracionMinutos,
+        'descripcion': descripcion,
+        'manual_url': manualUrl,
       },
     );
 

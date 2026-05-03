@@ -34,6 +34,8 @@ class JuegosRepository {
     int? jugadoresMin,
     int? jugadoresMax,
     int? duracionMinutos,
+    String? descripcion,
+    String? manualUrl,
   }) {
     return _api.createJuego(
       nombre: nombre,
@@ -44,6 +46,36 @@ class JuegosRepository {
       jugadoresMin: jugadoresMin,
       jugadoresMax: jugadoresMax,
       duracionMinutos: duracionMinutos,
+      descripcion: descripcion,
+      manualUrl: manualUrl,
+    );
+  }
+
+  Future<JuegoCatalogo> updateJuego({
+    required String juegoId,
+    required String nombre,
+    required JuegoTipo tipo,
+    String? codigoBarras,
+    String? imagenUrl,
+    String? plataforma,
+    int? jugadoresMin,
+    int? jugadoresMax,
+    int? duracionMinutos,
+    String? descripcion,
+    String? manualUrl,
+  }) {
+    return _api.updateJuego(
+      juegoId: juegoId,
+      nombre: nombre,
+      tipo: tipo,
+      codigoBarras: codigoBarras,
+      imagenUrl: imagenUrl,
+      plataforma: plataforma,
+      jugadoresMin: jugadoresMin,
+      jugadoresMax: jugadoresMax,
+      duracionMinutos: duracionMinutos,
+      descripcion: descripcion,
+      manualUrl: manualUrl,
     );
   }
 }

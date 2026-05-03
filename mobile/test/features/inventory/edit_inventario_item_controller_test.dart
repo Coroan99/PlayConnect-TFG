@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playconnect_mobile/src/core/network/api_client.dart';
+import 'package:playconnect_mobile/src/features/games/data/juegos_api.dart';
+import 'package:playconnect_mobile/src/features/games/data/juegos_repository.dart';
+import 'package:playconnect_mobile/src/features/games/domain/juego_catalogo.dart';
 import 'package:playconnect_mobile/src/features/inventory/data/inventario_api.dart';
 import 'package:playconnect_mobile/src/features/inventory/data/inventario_repository.dart';
 import 'package:playconnect_mobile/src/features/inventory/domain/inventario_item.dart';
@@ -37,6 +40,7 @@ void main() {
         updatedItem: backendCreatedItem,
         fetchedItem: backendCreatedItem,
       );
+      final fakeJuegosApi = _FakeJuegosApi();
       final fakePublicacionesApi = _FakePublicacionesApi();
       final fakeInventarioController = _FakeInventarioController();
       final fakePublicacionesController = _FakePublicacionesController();
@@ -47,10 +51,15 @@ void main() {
           inventarioRepositoryProvider.overrideWithValue(
             InventarioRepository(fakeInventarioApi),
           ),
+          juegosRepositoryProvider.overrideWithValue(
+            JuegosRepository(fakeJuegosApi),
+          ),
           publicacionesRepositoryProvider.overrideWithValue(
             PublicacionesRepository(fakePublicacionesApi),
           ),
-          inventarioControllerProvider.overrideWith(() => fakeInventarioController),
+          inventarioControllerProvider.overrideWith(
+            () => fakeInventarioController,
+          ),
           publicacionesControllerProvider.overrideWith(
             () => fakePublicacionesController,
           ),
@@ -65,18 +74,32 @@ void main() {
           .read(editInventarioItemControllerProvider.notifier)
           .saveChanges(
             item: originalItem,
+            gameName: originalItem.juego.nombre,
+            gameType: JuegoTipo.videojuego,
             estado: InventarioEstado.enVenta,
+            imageUrl: originalItem.juego.imagenUrl,
+            plataforma: originalItem.juego.plataforma,
+            jugadoresMin: originalItem.juego.jugadoresMin,
+            jugadoresMax: originalItem.juego.jugadoresMax,
+            duracionMinutos: originalItem.juego.duracionMinutos,
+            gameDescription: originalItem.juego.descripcion,
+            manualUrl: originalItem.juego.manualUrl,
             precio: 25,
             publicationDescription: '',
           );
 
       expect(error, isNull);
+      expect(fakeJuegosApi.updateCalls, 1);
       expect(fakePublicacionesApi.createCalls, 0);
       expect(fakePublicacionesApi.updateCalls, 0);
       expect(fakeInventarioController.refreshCalls, 1);
       expect(fakePublicacionesController.refreshCalls, 1);
       expect(
-        container.read(editInventarioItemControllerProvider).item?.publicacion?.id,
+        container
+            .read(editInventarioItemControllerProvider)
+            .item
+            ?.publicacion
+            ?.id,
         'pub-1',
       );
     },
@@ -115,6 +138,7 @@ void main() {
         updatedItem: backendCreatedItem,
         fetchedItem: updatedPublicationItem,
       );
+      final fakeJuegosApi = _FakeJuegosApi();
       final fakePublicacionesApi = _FakePublicacionesApi();
       final fakeInventarioController = _FakeInventarioController();
       final fakePublicacionesController = _FakePublicacionesController();
@@ -125,10 +149,15 @@ void main() {
           inventarioRepositoryProvider.overrideWithValue(
             InventarioRepository(fakeInventarioApi),
           ),
+          juegosRepositoryProvider.overrideWithValue(
+            JuegosRepository(fakeJuegosApi),
+          ),
           publicacionesRepositoryProvider.overrideWithValue(
             PublicacionesRepository(fakePublicacionesApi),
           ),
-          inventarioControllerProvider.overrideWith(() => fakeInventarioController),
+          inventarioControllerProvider.overrideWith(
+            () => fakeInventarioController,
+          ),
           publicacionesControllerProvider.overrideWith(
             () => fakePublicacionesController,
           ),
@@ -143,17 +172,33 @@ void main() {
           .read(editInventarioItemControllerProvider.notifier)
           .saveChanges(
             item: originalItem,
+            gameName: 'Sonic actualizado',
+            gameType: JuegoTipo.videojuego,
             estado: InventarioEstado.enVenta,
+            imageUrl: 'https://example.com/sonic.jpg',
+            plataforma: 'Mega Drive',
+            jugadoresMin: 1,
+            jugadoresMax: 2,
+            duracionMinutos: 90,
+            gameDescription: 'Descripcion actualizada',
+            manualUrl: 'https://example.com/manual.pdf',
             precio: 25,
             publicationDescription: 'Descripcion de demo',
           );
 
       expect(error, isNull);
+      expect(fakeJuegosApi.updateCalls, 1);
+      expect(fakeJuegosApi.lastNombre, 'Sonic actualizado');
+      expect(fakeJuegosApi.lastManualUrl, 'https://example.com/manual.pdf');
       expect(fakePublicacionesApi.createCalls, 0);
       expect(fakePublicacionesApi.updateCalls, 1);
       expect(fakePublicacionesApi.lastUpdatedPublicacionId, 'pub-1');
       expect(
-        container.read(editInventarioItemControllerProvider).item?.publicacion?.descripcion,
+        container
+            .read(editInventarioItemControllerProvider)
+            .item
+            ?.publicacion
+            ?.descripcion,
         'Descripcion de demo',
       );
     },
@@ -204,6 +249,47 @@ class _FakeInventarioApi extends InventarioApi {
   @override
   Future<InventarioItem> fetchInventarioItemById(String itemId) async {
     return fetchedItem;
+  }
+}
+
+class _FakeJuegosApi extends JuegosApi {
+  _FakeJuegosApi() : super(ApiClient(Dio()));
+
+  int updateCalls = 0;
+  String? lastNombre;
+  String? lastManualUrl;
+
+  @override
+  Future<JuegoCatalogo> updateJuego({
+    required String juegoId,
+    required String nombre,
+    required JuegoTipo tipo,
+    String? codigoBarras,
+    String? imagenUrl,
+    String? plataforma,
+    int? jugadoresMin,
+    int? jugadoresMax,
+    int? duracionMinutos,
+    String? descripcion,
+    String? manualUrl,
+  }) async {
+    updateCalls += 1;
+    lastNombre = nombre;
+    lastManualUrl = manualUrl;
+
+    return JuegoCatalogo(
+      id: juegoId,
+      nombre: nombre,
+      tipo: tipo,
+      codigoBarras: codigoBarras,
+      imagenUrl: imagenUrl,
+      plataforma: plataforma,
+      jugadoresMin: jugadoresMin,
+      jugadoresMax: jugadoresMax,
+      duracionMinutos: duracionMinutos,
+      descripcion: descripcion,
+      manualUrl: manualUrl,
+    );
   }
 }
 

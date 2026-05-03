@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../../games/data/juegos_repository.dart';
+import '../../../games/domain/juego_catalogo.dart';
 import '../../../offers/presentation/controllers/publicacion_detail_controller.dart';
 import '../../../publications/data/publicaciones_repository.dart';
 import '../../../publications/presentation/controllers/publicaciones_controller.dart';
@@ -109,7 +111,16 @@ class EditInventarioItemController extends Notifier<EditInventarioItemState> {
 
   Future<String?> saveChanges({
     required InventarioItem item,
+    required String gameName,
+    required JuegoTipo gameType,
     required InventarioEstado estado,
+    String? imageUrl,
+    String? plataforma,
+    int? jugadoresMin,
+    int? jugadoresMax,
+    int? duracionMinutos,
+    String? gameDescription,
+    String? manualUrl,
     double? precio,
     String? publicationDescription,
   }) async {
@@ -123,6 +134,22 @@ class EditInventarioItemController extends Notifier<EditInventarioItemState> {
         normalizedDescription != null && normalizedDescription.isNotEmpty;
 
     try {
+      await ref
+          .read(juegosRepositoryProvider)
+          .updateJuego(
+            juegoId: item.juego.id,
+            nombre: gameName,
+            tipo: gameType,
+            codigoBarras: item.juego.codigoBarras,
+            imagenUrl: imageUrl,
+            plataforma: plataforma,
+            jugadoresMin: jugadoresMin,
+            jugadoresMax: jugadoresMax,
+            duracionMinutos: duracionMinutos,
+            descripcion: gameDescription,
+            manualUrl: manualUrl,
+          );
+
       final inventarioRepository = ref.read(inventarioRepositoryProvider);
       final publicacionesRepository = ref.read(publicacionesRepositoryProvider);
 

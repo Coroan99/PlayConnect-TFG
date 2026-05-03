@@ -120,6 +120,7 @@ class PublicacionJuego {
     this.jugadoresMax,
     this.duracionMinutos,
     this.descripcion,
+    this.manualUrl,
   });
 
   final String id;
@@ -132,6 +133,7 @@ class PublicacionJuego {
   final int? jugadoresMax;
   final int? duracionMinutos;
   final String? descripcion;
+  final String? manualUrl;
 
   String get tipoLabel {
     return switch (tipoJuego) {
@@ -172,6 +174,7 @@ class PublicacionJuego {
     int? jugadoresMax,
     int? duracionMinutos,
     String? descripcion,
+    String? manualUrl,
   }) {
     return PublicacionJuego(
       id: id,
@@ -184,6 +187,7 @@ class PublicacionJuego {
       jugadoresMax: jugadoresMax ?? this.jugadoresMax,
       duracionMinutos: duracionMinutos ?? this.duracionMinutos,
       descripcion: descripcion ?? this.descripcion,
+      manualUrl: manualUrl ?? this.manualUrl,
     );
   }
 
@@ -203,6 +207,7 @@ class PublicacionJuego {
         json['duracion_minutos'] ?? json['duracionMinutos'],
       ),
       descripcion: _readNullableString(json['descripcion']),
+      manualUrl: _readNullableString(json['manual_url'] ?? json['manualUrl']),
     );
   }
 }

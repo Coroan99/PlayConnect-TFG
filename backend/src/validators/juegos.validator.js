@@ -33,6 +33,32 @@ const normalizeOptionalString = (value, fieldName) => {
   return normalizedValue || null;
 };
 
+const normalizeOptionalUrl = (value, fieldName) => {
+  const normalizedValue = normalizeOptionalString(value, fieldName);
+
+  if (normalizedValue === null) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(normalizedValue);
+
+    if (
+      parsedUrl.protocol !== "http:" &&
+      parsedUrl.protocol !== "https:"
+    ) {
+      throw new Error("Invalid protocol");
+    }
+
+    return normalizedValue;
+  } catch (_) {
+    throw new AppError(
+      `El campo ${fieldName} debe ser una URL válida`,
+      400,
+    );
+  }
+};
+
 const normalizeBarcode = (value) => {
   if (value === undefined || value === null || value === "") {
     return null;
@@ -109,11 +135,20 @@ export const validateJuegoPayload = (payload) => {
     );
   }
 
-  const jugadoresMin = normalizeNullableInteger(payload.jugadores_min, "jugadores_min");
-  const jugadoresMax = normalizeNullableInteger(payload.jugadores_max, "jugadores_max");
+  const jugadoresMin = normalizeNullableInteger(
+    payload.jugadores_min,
+    "jugadores_min",
+    { min: 1 },
+  );
+  const jugadoresMax = normalizeNullableInteger(
+    payload.jugadores_max,
+    "jugadores_max",
+    { min: 1 },
+  );
   const duracionMinutos = normalizeNullableInteger(
     payload.duracion_minutos,
     "duracion_minutos",
+    { min: 1 },
   );
 
   if (
@@ -130,12 +165,13 @@ export const validateJuegoPayload = (payload) => {
   return {
     nombre,
     codigo_barras: normalizeBarcode(payload.codigo_barras),
-    imagen_url: normalizeOptionalString(payload.imagen_url, "imagen_url"),
+    imagen_url: normalizeOptionalUrl(payload.imagen_url, "imagen_url"),
     tipo_juego: tipoJuego,
     plataforma: normalizeOptionalString(payload.plataforma, "plataforma"),
     jugadores_min: jugadoresMin,
     jugadores_max: jugadoresMax,
     duracion_minutos: duracionMinutos,
     descripcion: normalizeOptionalString(payload.descripcion, "descripcion"),
+    manual_url: normalizeOptionalUrl(payload.manual_url, "manual_url"),
   };
 };

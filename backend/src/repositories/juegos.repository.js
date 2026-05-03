@@ -1,22 +1,39 @@
+import { readFile } from "node:fs/promises";
 import { getPool } from "../config/db.js";
 
-const JUEGOS_TABLE_SQL = `
-  CREATE TABLE IF NOT EXISTS juegos (
-    id CHAR(36) NOT NULL PRIMARY KEY,
-    nombre VARCHAR(150) NOT NULL,
-    codigo_barras VARCHAR(100) NULL,
-    imagen_url VARCHAR(500) NULL,
-    tipo_juego ENUM('videojuego', 'juego_mesa') NOT NULL,
-    plataforma VARCHAR(120) NULL,
-    jugadores_min INT UNSIGNED NULL,
-    jugadores_max INT UNSIGNED NULL,
-    duracion_minutos INT UNSIGNED NULL,
-    descripcion TEXT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_juegos_codigo_barras (codigo_barras)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-`;
+const JUEGOS_TABLE_SQL_URL = new URL(
+  "../../sql/create_juegos_table.sql",
+  import.meta.url,
+);
+
+const COLUMN_MIGRATIONS = [
+  {
+    name: "imagen_url",
+    definition: "ADD COLUMN imagen_url VARCHAR(500) NULL AFTER codigo_barras",
+  },
+  {
+    name: "jugadores_min",
+    definition: "ADD COLUMN jugadores_min INT UNSIGNED NULL AFTER plataforma",
+  },
+  {
+    name: "jugadores_max",
+    definition:
+      "ADD COLUMN jugadores_max INT UNSIGNED NULL AFTER jugadores_min",
+  },
+  {
+    name: "duracion_minutos",
+    definition:
+      "ADD COLUMN duracion_minutos INT UNSIGNED NULL AFTER jugadores_max",
+  },
+  {
+    name: "descripcion",
+    definition: "ADD COLUMN descripcion TEXT NULL AFTER duracion_minutos",
+  },
+  {
+    name: "manual_url",
+    definition: "ADD COLUMN manual_url VARCHAR(500) NULL AFTER descripcion",
+  },
+];
 
 const BASE_SELECT = `
   SELECT
@@ -30,6 +47,7 @@ const BASE_SELECT = `
     jugadores_max,
     duracion_minutos,
     descripcion,
+    manual_url,
     created_at,
     updated_at
   FROM juegos
@@ -41,7 +59,23 @@ export const ensureJuegosTable = async () => {
   if (!ensureTablePromise) {
     const pool = getPool();
 
-    ensureTablePromise = pool.query(JUEGOS_TABLE_SQL).catch((error) => {
+    ensureTablePromise = (async () => {
+      const createTableSql = await readFile(JUEGOS_TABLE_SQL_URL, "utf8");
+      await pool.query(createTableSql);
+
+      for (const migration of COLUMN_MIGRATIONS) {
+        const [columns] = await pool.query(
+          `SHOW COLUMNS FROM juegos LIKE ?`,
+          [migration.name],
+        );
+
+        if (columns.length === 0) {
+          await pool.query(
+            `ALTER TABLE juegos ${migration.definition}`,
+          );
+        }
+      }
+    })().catch((error) => {
       ensureTablePromise = null;
       throw error;
     });
@@ -97,8 +131,9 @@ export const insertJuego = async (juego) => {
       jugadores_min,
       jugadores_max,
       duracion_minutos,
-      descripcion
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      descripcion,
+      manual_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       juego.id,
       juego.nombre,
@@ -110,6 +145,7 @@ export const insertJuego = async (juego) => {
       juego.jugadores_max,
       juego.duracion_minutos,
       juego.descripcion,
+      juego.manual_url,
     ],
   );
 };
@@ -127,7 +163,8 @@ export const updateJuego = async (id, juego) => {
        jugadores_min = ?,
        jugadores_max = ?,
        duracion_minutos = ?,
-       descripcion = ?
+       descripcion = ?,
+       manual_url = ?
      WHERE id = ?`,
     [
       juego.nombre,
@@ -139,6 +176,7 @@ export const updateJuego = async (id, juego) => {
       juego.jugadores_max,
       juego.duracion_minutos,
       juego.descripcion,
+      juego.manual_url,
       id,
     ],
   );

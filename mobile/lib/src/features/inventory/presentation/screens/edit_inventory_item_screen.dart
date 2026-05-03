@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/router/app_router.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../games/domain/juego_catalogo.dart';
 import '../../domain/inventario_item.dart';
 import '../controllers/edit_inventario_item_controller.dart';
 import '../controllers/inventario_controller.dart';
@@ -21,9 +23,18 @@ class EditInventoryItemScreen extends ConsumerStatefulWidget {
 class _EditInventoryItemScreenState
     extends ConsumerState<EditInventoryItemScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _platformController = TextEditingController();
+  final _imageUrlController = TextEditingController();
+  final _playersMinController = TextEditingController();
+  final _playersMaxController = TextEditingController();
+  final _durationController = TextEditingController();
+  final _gameDescriptionController = TextEditingController();
+  final _manualUrlController = TextEditingController();
   final _priceController = TextEditingController();
   final _publicationDescriptionController = TextEditingController();
 
+  JuegoTipo? _selectedGameType;
   InventarioEstado? _selectedEstado;
   String? _hydratedSnapshotKey;
   String? _loadedItemId;
@@ -51,6 +62,14 @@ class _EditInventoryItemScreenState
 
   @override
   void dispose() {
+    _nameController.dispose();
+    _platformController.dispose();
+    _imageUrlController.dispose();
+    _playersMinController.dispose();
+    _playersMaxController.dispose();
+    _durationController.dispose();
+    _gameDescriptionController.dispose();
+    _manualUrlController.dispose();
     _priceController.dispose();
     _publicationDescriptionController.dispose();
     super.dispose();
@@ -78,11 +97,14 @@ class _EditInventoryItemScreenState
 
     _hydrateForm(item);
 
+    final effectiveGameType =
+        _selectedGameType ?? JuegoTipo.fromApi(item.juego.tipoJuego);
     final effectiveEstado = _selectedEstado ?? item.estado;
     final isEnVenta = effectiveEstado == InventarioEstado.enVenta;
     final canCreatePublication = effectiveEstado.puedePublicarse;
     final hasPublication = item.tienePublicacion;
     final shouldManagePublication = hasPublication || canCreatePublication;
+    final manualUri = _parseHttpUri(_manualUrlController.text);
     final publicationVisibilityLabel = canCreatePublication
         ? 'Visible en el feed principal'
         : 'Oculta en el feed mientras este en coleccion';
@@ -103,6 +125,215 @@ class _EditInventoryItemScreenState
                 ],
                 _GameSummaryCard(item: item, estado: effectiveEstado),
                 const SizedBox(height: 24),
+                _FormSection(
+                  title: 'Ficha del juego',
+                  subtitle:
+                      'Edita la informacion real del juego asociada a este item del inventario.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        enabled: !state.isSubmitting,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre del juego',
+                          prefixIcon: Icon(Icons.videogame_asset_outlined),
+                        ),
+                        validator: _validateRequiredName,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<JuegoTipo>(
+                        key: ValueKey(effectiveGameType),
+                        initialValue: effectiveGameType,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo de juego',
+                          prefixIcon: Icon(Icons.category_outlined),
+                        ),
+                        items: JuegoTipo.values
+                            .map(
+                              (tipo) => DropdownMenuItem(
+                                value: tipo,
+                                child: Text(tipo.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: state.isSubmitting
+                            ? null
+                            : (value) {
+                                if (value == null) {
+                                  return;
+                                }
+
+                                setState(() {
+                                  _selectedGameType = value;
+                                });
+                              },
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Selecciona un tipo de juego';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _platformController,
+                        enabled: !state.isSubmitting,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: effectiveGameType == JuegoTipo.videojuego
+                              ? 'Plataforma'
+                              : 'Plataforma o edicion',
+                          prefixIcon: const Icon(Icons.devices_outlined),
+                          helperText: effectiveGameType == JuegoTipo.videojuego
+                              ? 'Opcional, pero recomendable para videojuegos.'
+                              : 'Opcional. Puedes dejarlo vacio en juegos de mesa.',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _imageUrlController,
+                        enabled: !state.isSubmitting,
+                        keyboardType: TextInputType.url,
+                        decoration: const InputDecoration(
+                          labelText: 'URL de imagen',
+                          prefixIcon: Icon(Icons.image_outlined),
+                        ),
+                        validator: (value) => _validateOptionalUrl(
+                          value,
+                          fieldLabel: 'la imagen',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: 180,
+                            child: TextFormField(
+                              controller: _playersMinController,
+                              enabled: !state.isSubmitting,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Jugadores min',
+                                prefixIcon: Icon(Icons.group_outlined),
+                              ),
+                              validator: (value) => _validatePositiveInt(
+                                value,
+                                label: 'jugadores min',
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 180,
+                            child: TextFormField(
+                              controller: _playersMaxController,
+                              enabled: !state.isSubmitting,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Jugadores max',
+                                prefixIcon: Icon(Icons.groups_outlined),
+                              ),
+                              validator: _validatePlayersMax,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 220,
+                            child: TextFormField(
+                              controller: _durationController,
+                              enabled: !state.isSubmitting,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Duracion aproximada (min)',
+                                prefixIcon: Icon(Icons.timer_outlined),
+                              ),
+                              validator: (value) => _validatePositiveInt(
+                                value,
+                                label: 'duracion',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _gameDescriptionController,
+                        enabled: !state.isSubmitting,
+                        minLines: 4,
+                        maxLines: 6,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripcion del juego',
+                          alignLabelWithHint: true,
+                          prefixIcon: Icon(Icons.notes_outlined),
+                          helperText:
+                              'Opcional. Resumen corto de la ficha del juego.',
+                        ),
+                        validator: (value) {
+                          if ((value ?? '').trim().length > 2000) {
+                            return 'La descripcion no puede superar los 2000 caracteres';
+                          }
+
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _FormSection(
+                  title: 'Manual',
+                  subtitle:
+                      'Asocia un manual PDF o una pagina externa mediante URL. No se suben archivos en esta version.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _manualUrlController,
+                        enabled: !state.isSubmitting,
+                        keyboardType: TextInputType.url,
+                        onChanged: (_) => setState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'URL del manual (PDF o pagina externa)',
+                          prefixIcon: Icon(Icons.menu_book_outlined),
+                        ),
+                        validator: (value) => _validateOptionalUrl(
+                          value,
+                          fieldLabel: 'el manual',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (manualUri == null)
+                        const _HelperBanner(
+                          icon: Icons.info_outline,
+                          message:
+                              'Sin manual añadido. Puedes dejar este campo vacio o pegar una URL valida.',
+                        )
+                      else
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: state.isSubmitting
+                                  ? null
+                                  : () => _openManual(manualUri),
+                              icon: const Icon(Icons.open_in_new),
+                              label: const Text('Ver manual'),
+                            ),
+                            const _InlineHint(
+                              message:
+                                  'Se abrira fuera de la app usando el navegador o visor PDF del dispositivo.',
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _FormSection(
                   title: 'Estado del item',
                   subtitle:
@@ -272,6 +503,15 @@ class _EditInventoryItemScreenState
   void _hydrateForm(InventarioItem item) {
     final snapshotKey = [
       item.id,
+      item.juego.nombre,
+      item.juego.tipoJuego,
+      item.juego.plataforma ?? '',
+      item.juego.imagenUrl ?? '',
+      item.juego.jugadoresMin?.toString() ?? '',
+      item.juego.jugadoresMax?.toString() ?? '',
+      item.juego.duracionMinutos?.toString() ?? '',
+      item.juego.descripcion ?? '',
+      item.juego.manualUrl ?? '',
       item.estado.apiValue,
       item.precio?.toStringAsFixed(2) ?? '',
       item.updatedAt?.toIso8601String() ?? '',
@@ -284,6 +524,15 @@ class _EditInventoryItemScreenState
     }
 
     _hydratedSnapshotKey = snapshotKey;
+    _nameController.text = item.juego.nombre;
+    _platformController.text = item.juego.plataforma ?? '';
+    _imageUrlController.text = item.juego.imagenUrl ?? '';
+    _playersMinController.text = item.juego.jugadoresMin?.toString() ?? '';
+    _playersMaxController.text = item.juego.jugadoresMax?.toString() ?? '';
+    _durationController.text = item.juego.duracionMinutos?.toString() ?? '';
+    _gameDescriptionController.text = item.juego.descripcion ?? '';
+    _manualUrlController.text = item.juego.manualUrl ?? '';
+    _selectedGameType = JuegoTipo.fromApi(item.juego.tipoJuego);
     _selectedEstado = item.estado;
     _priceController.text = item.precio?.toStringAsFixed(2) ?? '';
     _publicationDescriptionController.text =
@@ -324,8 +573,9 @@ class _EditInventoryItemScreenState
     }
 
     final estado = _selectedEstado;
+    final gameType = _selectedGameType;
 
-    if (estado == null) {
+    if (estado == null || gameType == null) {
       return;
     }
 
@@ -339,7 +589,18 @@ class _EditInventoryItemScreenState
         .read(editInventarioItemControllerProvider.notifier)
         .saveChanges(
           item: item,
+          gameName: _nameController.text.trim(),
+          gameType: gameType,
           estado: estado,
+          imageUrl: _normalizeOptionalText(_imageUrlController.text),
+          plataforma: _normalizeOptionalText(_platformController.text),
+          jugadoresMin: _parseOptionalInt(_playersMinController.text),
+          jugadoresMax: _parseOptionalInt(_playersMaxController.text),
+          duracionMinutos: _parseOptionalInt(_durationController.text),
+          gameDescription: _normalizeOptionalText(
+            _gameDescriptionController.text,
+          ),
+          manualUrl: _normalizeOptionalText(_manualUrlController.text),
           precio: precio,
           publicationDescription: _publicationDescriptionController.text,
         );
@@ -388,6 +649,65 @@ class _EditInventoryItemScreenState
     return null;
   }
 
+  String? _validateRequiredName(String? value) {
+    if ((value ?? '').trim().isEmpty) {
+      return 'El nombre es obligatorio';
+    }
+
+    return null;
+  }
+
+  String? _validateOptionalUrl(String? value, {required String fieldLabel}) {
+    final normalizedValue = (value ?? '').trim();
+
+    if (normalizedValue.isEmpty) {
+      return null;
+    }
+
+    if (_parseHttpUri(normalizedValue) == null) {
+      return 'Introduce una URL valida para $fieldLabel';
+    }
+
+    return null;
+  }
+
+  String? _validatePositiveInt(String? value, {required String label}) {
+    final normalizedValue = (value ?? '').trim();
+
+    if (normalizedValue.isEmpty) {
+      return null;
+    }
+
+    final parsedValue = int.tryParse(normalizedValue);
+
+    if (parsedValue == null) {
+      return 'Introduce un numero entero valido para $label';
+    }
+
+    if (parsedValue <= 0) {
+      return 'El campo $label debe ser mayor que 0';
+    }
+
+    return null;
+  }
+
+  String? _validatePlayersMax(String? value) {
+    final maxError = _validatePositiveInt(value, label: 'jugadores max');
+
+    if (maxError != null) {
+      return maxError;
+    }
+
+    final min = _parseOptionalInt(_playersMinController.text);
+    final max = _parseOptionalInt(value ?? '');
+
+    if (min != null && max != null && min > max) {
+      return 'Jugadores max debe ser mayor o igual que jugadores min';
+    }
+
+    return null;
+  }
+
   String? _validatePublicationDescription(InventarioItem item) {
     final shouldValidate =
         item.tienePublicacion ||
@@ -408,6 +728,51 @@ class _EditInventoryItemScreenState
 
   double? _parsePrice(String value) {
     return double.tryParse(value.trim().replaceAll(',', '.'));
+  }
+
+  int? _parseOptionalInt(String value) {
+    final normalizedValue = value.trim();
+
+    if (normalizedValue.isEmpty) {
+      return null;
+    }
+
+    return int.tryParse(normalizedValue);
+  }
+
+  String? _normalizeOptionalText(String value) {
+    final normalizedValue = value.trim();
+    return normalizedValue.isEmpty ? null : normalizedValue;
+  }
+
+  Uri? _parseHttpUri(String value) {
+    final normalizedValue = value.trim();
+
+    if (normalizedValue.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(normalizedValue);
+
+    if (uri == null || (!uri.isScheme('http') && !uri.isScheme('https'))) {
+      return null;
+    }
+
+    return uri;
+  }
+
+  Future<void> _openManual(Uri uri) async {
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir el manual desde esa URL.'),
+          ),
+        );
+    }
   }
 }
 

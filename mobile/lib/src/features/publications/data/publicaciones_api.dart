@@ -12,9 +12,7 @@ class PublicacionesApi {
   Future<List<Publicacion>> fetchPublicaciones() async {
     final response = await _client.get('publicaciones');
     final items = _asJsonList(response.data);
-    _debugLog(
-      'PublicacionesApi.fetchPublicaciones -> items=${items.length}',
-    );
+    _debugLog('PublicacionesApi.fetchPublicaciones -> items=${items.length}');
 
     return items.map(Publicacion.fromJson).toList();
   }
@@ -34,6 +32,7 @@ class PublicacionesApi {
         jugadoresMax: juego.jugadoresMax,
         duracionMinutos: juego.duracionMinutos,
         descripcion: juego.descripcion,
+        manualUrl: juego.manualUrl,
       ),
     );
   }

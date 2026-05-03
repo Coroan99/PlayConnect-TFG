@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS juegos (
   jugadores_max INT UNSIGNED NULL,
   duracion_minutos INT UNSIGNED NULL,
   descripcion TEXT NULL,
+  manual_url VARCHAR(500) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_juegos_codigo_barras (codigo_barras)

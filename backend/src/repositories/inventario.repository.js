@@ -41,6 +41,7 @@ const BASE_SELECT = `
     j.jugadores_max AS juego_jugadores_max,
     j.duracion_minutos AS juego_duracion_minutos,
     j.descripcion AS juego_descripcion,
+    j.manual_url AS juego_manual_url,
     p.id AS publicacion_id,
     p.descripcion AS publicacion_descripcion,
     p.created_at AS publicacion_created_at,
@@ -84,6 +85,7 @@ const mapInventarioRow = (row) => ({
     jugadores_max: row.juego_jugadores_max,
     duracion_minutos: row.juego_duracion_minutos,
     descripcion: row.juego_descripcion,
+    manual_url: row.juego_manual_url,
   },
 });
 

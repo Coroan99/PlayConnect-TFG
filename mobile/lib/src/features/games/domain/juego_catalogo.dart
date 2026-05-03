@@ -45,6 +45,7 @@ class JuegoCatalogo {
     this.jugadoresMax,
     this.duracionMinutos,
     this.descripcion,
+    this.manualUrl,
     this.createdAt,
     this.updatedAt,
   });
@@ -59,6 +60,7 @@ class JuegoCatalogo {
   final int? jugadoresMax;
   final int? duracionMinutos;
   final String? descripcion;
+  final String? manualUrl;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -116,6 +118,7 @@ class JuegoCatalogo {
         json['duracion_minutos'] ?? json['duracionMinutos'],
       ),
       descripcion: _readNullableString(json['descripcion']),
+      manualUrl: _readNullableString(json['manual_url'] ?? json['manualUrl']),
       createdAt: _readDate(json['created_at'] ?? json['createdAt']),
       updatedAt: _readDate(json['updated_at'] ?? json['updatedAt']),
     );
