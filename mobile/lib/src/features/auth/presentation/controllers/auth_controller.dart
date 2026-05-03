@@ -87,6 +87,7 @@ class AuthController extends Notifier<AuthState> {
     required String email,
     required String password,
     required String tipo,
+    String? ciudad,
   }) async {
     state = const AuthState.loading();
 
@@ -98,6 +99,7 @@ class AuthController extends Notifier<AuthState> {
             email: email,
             password: password,
             tipo: tipo,
+            ciudad: ciudad,
           );
 
       state = AuthState.authenticated(usuario);
@@ -109,6 +111,14 @@ class AuthController extends Notifier<AuthState> {
   Future<void> logout() async {
     await ref.read(authRepositoryProvider).logout();
     state = const AuthState.unauthenticated();
+  }
+
+  void setAuthenticatedUser(Usuario usuario) {
+    if (!state.isAuthenticated) {
+      return;
+    }
+
+    state = AuthState.authenticated(usuario);
   }
 
   String _errorMessage(Object error) {

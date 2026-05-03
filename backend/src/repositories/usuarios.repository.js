@@ -12,6 +12,7 @@ const BASE_PUBLIC_SELECT = `
     nombre,
     email,
     tipo,
+    ciudad,
     created_at,
     updated_at
   FROM usuarios
@@ -24,6 +25,7 @@ const BASE_AUTH_SELECT = `
     email,
     password,
     tipo,
+    ciudad,
     created_at,
     updated_at
   FROM usuarios
@@ -38,6 +40,16 @@ export const ensureUsuariosTable = async () => {
     ensureTablePromise = (async () => {
       const createTableSql = await readFile(USUARIOS_TABLE_SQL_URL, "utf8");
       await pool.query(createTableSql);
+
+      const [cityColumns] = await pool.query(
+        "SHOW COLUMNS FROM usuarios LIKE 'ciudad'",
+      );
+
+      if (cityColumns.length === 0) {
+        await pool.query(
+          "ALTER TABLE usuarios ADD COLUMN ciudad VARCHAR(120) NULL AFTER tipo",
+        );
+      }
     })().catch((error) => {
       ensureTablePromise = null;
       throw error;
@@ -92,16 +104,30 @@ export const insertUsuario = async (usuario) => {
       nombre,
       email,
       password,
-      tipo
-    ) VALUES (?, ?, ?, ?, ?)`,
+      tipo,
+      ciudad
+    ) VALUES (?, ?, ?, ?, ?, ?)`,
     [
       usuario.id,
       usuario.nombre,
       usuario.email,
       usuario.password,
       usuario.tipo,
+      usuario.ciudad,
     ],
   );
+};
+
+export const updateUsuarioCity = async (id, ciudad) => {
+  const pool = getPool();
+  const [result] = await pool.execute(
+    `UPDATE usuarios
+     SET ciudad = ?
+     WHERE id = ?`,
+    [ciudad, id],
+  );
+
+  return result.affectedRows;
 };
 
 export const updateUsuarioPassword = async (id, password) => {

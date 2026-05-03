@@ -15,6 +15,24 @@ enum JuegoTipo {
   }
 }
 
+enum GameTypeFilter {
+  all('Todos'),
+  videogames('Videojuegos'),
+  boardGames('Juegos de mesa');
+
+  const GameTypeFilter(this.label);
+
+  final String label;
+
+  bool matchesTipoApiValue(String tipoJuego) {
+    return switch (this) {
+      GameTypeFilter.all => true,
+      GameTypeFilter.videogames => tipoJuego == JuegoTipo.videojuego.apiValue,
+      GameTypeFilter.boardGames => tipoJuego == JuegoTipo.juegoMesa.apiValue,
+    };
+  }
+}
+
 class JuegoCatalogo {
   const JuegoCatalogo({
     required this.id,

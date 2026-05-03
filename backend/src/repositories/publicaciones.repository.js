@@ -26,6 +26,7 @@ const BASE_SELECT = `
     i.precio AS inventario_precio,
     u.id AS usuario_id,
     u.nombre AS usuario_nombre,
+    u.ciudad AS usuario_ciudad,
     j.id AS juego_id,
     j.nombre AS juego_nombre,
     j.codigo_barras AS juego_codigo_barras,
@@ -52,6 +53,7 @@ const mapPublicacionRow = (row) => ({
   usuario: {
     id: row.usuario_id,
     nombre: row.usuario_nombre,
+    ciudad: row.usuario_ciudad,
   },
   juego: {
     id: row.juego_id,

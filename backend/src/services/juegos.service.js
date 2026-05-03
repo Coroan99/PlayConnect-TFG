@@ -25,9 +25,42 @@ const mapDuplicateBarcodeError = (error) => {
   throw error;
 };
 
-export const listJuegos = async () => {
+const normalizeSearch = (value) => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replaceAll(/[\u0300-\u036f]/g, "");
+};
+
+const matchesSearch = (juego, search) => {
+  if (!search) {
+    return true;
+  }
+
+  const terms = [
+    juego.nombre,
+    juego.plataforma,
+    juego.codigo_barras,
+    juego.tipo_juego,
+    juego.tipo_juego === "videojuego" ? "videojuego" : "juego de mesa",
+  ]
+    .filter((value) => value != null && value !== "")
+    .map((value) => normalizeSearch(value));
+
+  return terms.some((term) => term.includes(search));
+};
+
+export const listJuegos = async ({ search } = {}) => {
   await ensureJuegosTable();
-  return findAllJuegos();
+  const juegos = await findAllJuegos();
+  const normalizedSearch = normalizeSearch(search);
+
+  return juegos.filter((juego) => matchesSearch(juego, normalizedSearch));
 };
 
 export const getJuegoDetail = async (id) => {

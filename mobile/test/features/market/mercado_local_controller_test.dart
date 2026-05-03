@@ -15,6 +15,7 @@ void main() {
         nombre: 'Ana',
         email: 'ana@test.com',
         tipo: 'jugador',
+        ciudad: 'Madrid',
       );
 
       final container = ProviderContainer(
@@ -73,7 +74,7 @@ void main() {
       expect(view.publicaciones, hasLength(1));
       expect(view.publicaciones.single.id, 'pub-other');
       expect(view.hasRealCityData, isFalse);
-      expect(view.selectedCity, defaultMarketCity);
+      expect(view.selectedCity, 'Madrid');
     },
   );
 }

@@ -17,8 +17,8 @@ class JuegosRepository {
 
   final JuegosApi _api;
 
-  Future<List<JuegoCatalogo>> getJuegos() {
-    return _api.fetchJuegos();
+  Future<List<JuegoCatalogo>> getJuegos({String? search}) {
+    return _api.fetchJuegos(search: search);
   }
 
   Future<JuegoCatalogo> getJuegoByBarcode(String codigoBarras) {

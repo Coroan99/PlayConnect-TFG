@@ -1,12 +1,17 @@
 import bcrypt from "bcryptjs";
 import { AppError } from "../utils/app-error.js";
-import { validateUsuarioPayload } from "../validators/usuarios.validator.js";
+import {
+  validateUsuarioCityPayload,
+  validateUsuarioId,
+  validateUsuarioPayload,
+} from "../validators/usuarios.validator.js";
 import {
   ensureUsuariosTable,
   findAllUsuarios,
   findUsuarioById,
   generateUsuarioId,
   insertUsuario,
+  updateUsuarioCity,
 } from "../repositories/usuarios.repository.js";
 
 const DUPLICATE_ENTRY_ERROR_CODE = "ER_DUP_ENTRY";
@@ -60,10 +65,35 @@ export const createUsuario = async (payload) => {
       email: normalizedUsuario.email,
       password: hashedPassword,
       tipo: normalizedUsuario.tipo,
+      ciudad: normalizedUsuario.ciudad,
     });
   } catch (error) {
     mapDuplicateEmailError(error);
   }
 
   return getUsuarioDetail(usuarioId);
+};
+
+export const updateUsuarioCityById = async (id, payload) => {
+  const normalizedId = validateUsuarioId(id);
+  const normalizedPayload = validateUsuarioCityPayload(payload);
+
+  await ensureUsuariosTable();
+
+  const existingUsuario = await findUsuarioById(normalizedId);
+
+  if (!existingUsuario) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  const affectedRows = await updateUsuarioCity(
+    normalizedId,
+    normalizedPayload.ciudad,
+  );
+
+  if (affectedRows === 0) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  return getUsuarioDetail(normalizedId);
 };

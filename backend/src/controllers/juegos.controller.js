@@ -28,7 +28,7 @@ const handleControllerError = (res, error, defaultMessage, logLabel) => {
 
 export const getJuegos = async (req, res) => {
   try {
-    const juegos = await listJuegos();
+    const juegos = await listJuegos({ search: req.query.search });
 
     return sendSuccess(res, {
       message: "Juegos obtenidos correctamente",

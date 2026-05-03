@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../../games/domain/juego_catalogo.dart';
 import '../../data/inventario_repository.dart';
 import '../../domain/inventario_item.dart';
 
@@ -8,14 +9,21 @@ class InventarioState {
   const InventarioState({
     required this.items,
     required this.isLoading,
+    required this.selectedTypeFilter,
     this.usuarioId,
     this.errorMessage,
   });
 
-  const InventarioState.initial() : this(items: const [], isLoading: false);
+  const InventarioState.initial()
+    : this(
+        items: const [],
+        isLoading: false,
+        selectedTypeFilter: GameTypeFilter.all,
+      );
 
   final List<InventarioItem> items;
   final bool isLoading;
+  final GameTypeFilter selectedTypeFilter;
   final String? usuarioId;
   final String? errorMessage;
 
@@ -34,6 +42,7 @@ class InventarioState {
   InventarioState copyWith({
     List<InventarioItem>? items,
     bool? isLoading,
+    GameTypeFilter? selectedTypeFilter,
     String? usuarioId,
     String? errorMessage,
     bool clearError = false,
@@ -41,16 +50,55 @@ class InventarioState {
     return InventarioState(
       items: items ?? this.items,
       isLoading: isLoading ?? this.isLoading,
+      selectedTypeFilter: selectedTypeFilter ?? this.selectedTypeFilter,
       usuarioId: usuarioId ?? this.usuarioId,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
   }
 }
 
+class InventarioViewData {
+  const InventarioViewData({
+    required this.items,
+    required this.selectedTypeFilter,
+    required this.total,
+    required this.totalColeccion,
+    required this.totalVisible,
+    required this.totalEnVenta,
+  });
+
+  final List<InventarioItem> items;
+  final GameTypeFilter selectedTypeFilter;
+  final int total;
+  final int totalColeccion;
+  final int totalVisible;
+  final int totalEnVenta;
+}
+
 final inventarioControllerProvider =
     NotifierProvider<InventarioController, InventarioState>(
       InventarioController.new,
     );
+
+final inventarioViewProvider = Provider<InventarioViewData>((ref) {
+  final state = ref.watch(inventarioControllerProvider);
+  final filteredItems = state.items.where((item) {
+    return state.selectedTypeFilter.matchesTipoApiValue(item.juego.tipoJuego);
+  }).toList();
+
+  int countByEstado(InventarioEstado estado) {
+    return filteredItems.where((item) => item.estado == estado).length;
+  }
+
+  return InventarioViewData(
+    items: filteredItems,
+    selectedTypeFilter: state.selectedTypeFilter,
+    total: filteredItems.length,
+    totalColeccion: countByEstado(InventarioEstado.coleccion),
+    totalVisible: countByEstado(InventarioEstado.visible),
+    totalEnVenta: countByEstado(InventarioEstado.enVenta),
+  );
+});
 
 class InventarioController extends Notifier<InventarioState> {
   @override
@@ -97,6 +145,10 @@ class InventarioController extends Notifier<InventarioState> {
     }
 
     await loadInventario(currentUsuarioId);
+  }
+
+  void selectTypeFilter(GameTypeFilter filter) {
+    state = state.copyWith(selectedTypeFilter: filter, clearError: true);
   }
 
   void prependItem(InventarioItem item) {

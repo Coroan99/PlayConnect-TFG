@@ -62,15 +62,34 @@ class AuthRepository {
     required String email,
     required String password,
     required String tipo,
+    String? ciudad,
   }) async {
     await _api.register(
       nombre: nombre.trim(),
       email: email.trim().toLowerCase(),
       password: password,
       tipo: tipo,
+      ciudad: ciudad,
     );
 
     return login(email: email, password: password);
+  }
+
+  Future<Usuario> updateUsuarioCity({
+    required String usuarioId,
+    String? ciudad,
+  }) async {
+    final usuario = await _api.updateUsuarioCity(
+      usuarioId: usuarioId,
+      ciudad: ciudad,
+    );
+    final token = _storage.getAuthToken();
+
+    if (token != null && token.isNotEmpty) {
+      await _storage.saveSession(token: token, usuario: usuario.toJson());
+    }
+
+    return usuario;
   }
 
   Future<void> logout() {

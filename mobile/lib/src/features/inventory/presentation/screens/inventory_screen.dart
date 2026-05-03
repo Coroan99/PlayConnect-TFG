@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../games/domain/juego_catalogo.dart';
 import '../controllers/inventario_controller.dart';
 import '../widgets/inventario_item_card.dart';
 
@@ -41,6 +42,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     final usuario = ref.watch(authControllerProvider).usuario;
     final state = ref.watch(inventarioControllerProvider);
+    final view = ref.watch(inventarioViewProvider);
     final controller = ref.read(inventarioControllerProvider.notifier);
 
     if (usuario == null) {
@@ -73,7 +75,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               children: [
                 _InventoryHeader(
                   state: state,
+                  view: view,
                   onAddGame: () => _openAddGameFlow(),
+                  onFilterChanged: controller.selectTypeFilter,
                 ),
                 SizedBox(
                   height: constraints.maxHeight > 220
@@ -93,17 +97,30 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
-            itemCount: state.items.length + 1,
+            itemCount: (view.items.isEmpty ? 1 : view.items.length) + 1,
             separatorBuilder: (context, index) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _InventoryHeader(
                   state: state,
+                  view: view,
                   onAddGame: () => _openAddGameFlow(),
+                  onFilterChanged: controller.selectTypeFilter,
                 );
               }
 
-              final item = state.items[index - 1];
+              if (view.items.isEmpty) {
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: _FilteredInventoryEmptyState(
+                      filter: view.selectedTypeFilter,
+                    ),
+                  ),
+                );
+              }
+
+              final item = view.items[index - 1];
 
               return Center(
                 child: ConstrainedBox(
@@ -165,10 +182,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 }
 
 class _InventoryHeader extends StatelessWidget {
-  const _InventoryHeader({required this.state, required this.onAddGame});
+  const _InventoryHeader({
+    required this.state,
+    required this.view,
+    required this.onAddGame,
+    required this.onFilterChanged,
+  });
 
   final InventarioState state;
+  final InventarioViewData view;
   final VoidCallback onAddGame;
+  final ValueChanged<GameTypeFilter> onFilterChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -219,14 +243,29 @@ class _InventoryHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
+            SegmentedButton<GameTypeFilter>(
+              segments: GameTypeFilter.values
+                  .map(
+                    (filter) => ButtonSegment(
+                      value: filter,
+                      label: Text(filter.label),
+                    ),
+                  )
+                  .toList(),
+              selected: {view.selectedTypeFilter},
+              onSelectionChanged: (selection) {
+                onFilterChanged(selection.first);
+              },
+            ),
+            const SizedBox(height: 18),
             Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                _SummaryCard(label: 'Total', value: state.total),
-                _SummaryCard(label: 'Coleccion', value: state.totalColeccion),
-                _SummaryCard(label: 'Visible', value: state.totalVisible),
-                _SummaryCard(label: 'En venta', value: state.totalEnVenta),
+                _SummaryCard(label: 'Total', value: view.total),
+                _SummaryCard(label: 'Coleccion', value: view.totalColeccion),
+                _SummaryCard(label: 'Visible', value: view.totalVisible),
+                _SummaryCard(label: 'En venta', value: view.totalEnVenta),
               ],
             ),
             const SizedBox(height: 8),
@@ -261,6 +300,22 @@ class _InventoryEmptyState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FilteredInventoryEmptyState extends StatelessWidget {
+  const _FilteredInventoryEmptyState({required this.filter});
+
+  final GameTypeFilter filter;
+
+  @override
+  Widget build(BuildContext context) {
+    return EmptyState(
+      icon: Icons.filter_alt_off_outlined,
+      title: 'Sin resultados para este filtro',
+      description:
+          'No hay ${filter.label.toLowerCase()} con los criterios actuales. Cambia el filtro para ver el resto del inventario.',
     );
   }
 }

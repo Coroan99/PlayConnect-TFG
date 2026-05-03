@@ -15,6 +15,7 @@ class AddInventarioItemState {
     required this.isLookingUpBarcode,
     required this.isSubmitting,
     required this.hasLoadedCatalog,
+    required this.catalogQuery,
     this.catalogErrorMessage,
     this.lastScannedBarcode,
     this.barcodeLookupJuego,
@@ -29,6 +30,7 @@ class AddInventarioItemState {
         isLookingUpBarcode: false,
         isSubmitting: false,
         hasLoadedCatalog: false,
+        catalogQuery: '',
       );
 
   final List<JuegoCatalogo> juegos;
@@ -36,6 +38,7 @@ class AddInventarioItemState {
   final bool isLookingUpBarcode;
   final bool isSubmitting;
   final bool hasLoadedCatalog;
+  final String catalogQuery;
   final String? catalogErrorMessage;
   final String? lastScannedBarcode;
   final JuegoCatalogo? barcodeLookupJuego;
@@ -52,6 +55,7 @@ class AddInventarioItemState {
     bool? isLookingUpBarcode,
     bool? isSubmitting,
     bool? hasLoadedCatalog,
+    String? catalogQuery,
     String? catalogErrorMessage,
     String? lastScannedBarcode,
     JuegoCatalogo? barcodeLookupJuego,
@@ -66,6 +70,7 @@ class AddInventarioItemState {
       isLookingUpBarcode: isLookingUpBarcode ?? this.isLookingUpBarcode,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       hasLoadedCatalog: hasLoadedCatalog ?? this.hasLoadedCatalog,
+      catalogQuery: catalogQuery ?? this.catalogQuery,
       catalogErrorMessage: clearCatalogError
           ? null
           : catalogErrorMessage ?? this.catalogErrorMessage,
@@ -139,41 +144,69 @@ final addInventarioItemControllerProvider =
     );
 
 class AddInventarioItemController extends Notifier<AddInventarioItemState> {
+  int _catalogRequestId = 0;
+
   @override
   AddInventarioItemState build() {
     return const AddInventarioItemState.initial();
   }
 
-  Future<void> loadCatalog({bool force = false}) async {
-    if (state.isLoadingCatalog) {
+  Future<void> loadCatalog({String search = '', bool force = false}) async {
+    final normalizedSearch = search.trim();
+
+    if (state.isLoadingCatalog && state.catalogQuery == normalizedSearch) {
       return;
     }
 
-    if (state.hasLoadedCatalog && !force) {
+    if (state.hasLoadedCatalog &&
+        !force &&
+        state.catalogQuery == normalizedSearch) {
       return;
     }
 
-    state = state.copyWith(isLoadingCatalog: true, clearCatalogError: true);
+    final requestId = ++_catalogRequestId;
+
+    state = state.copyWith(
+      isLoadingCatalog: true,
+      catalogQuery: normalizedSearch,
+      clearCatalogError: true,
+    );
 
     try {
-      final juegos = await ref.read(juegosRepositoryProvider).getJuegos();
+      final juegos = await ref
+          .read(juegosRepositoryProvider)
+          .getJuegos(search: normalizedSearch.isEmpty ? null : normalizedSearch);
+
+      if (requestId != _catalogRequestId) {
+        return;
+      }
 
       state = state.copyWith(
         juegos: juegos,
         isLoadingCatalog: false,
         hasLoadedCatalog: true,
+        catalogQuery: normalizedSearch,
         clearCatalogError: true,
       );
     } catch (error) {
+      if (requestId != _catalogRequestId) {
+        return;
+      }
+
       state = state.copyWith(
         isLoadingCatalog: false,
         hasLoadedCatalog: true,
+        catalogQuery: normalizedSearch,
         catalogErrorMessage: _errorMessage(
           error,
           fallback: 'No se pudo cargar el catalogo de juegos.',
         ),
       );
     }
+  }
+
+  Future<void> searchCatalog(String query) {
+    return loadCatalog(search: query, force: true);
   }
 
   void clearBarcodeLookup() {

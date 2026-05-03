@@ -211,7 +211,14 @@ class _AddInventoryItemScreenState
                       selectedJuego: selectedJuego,
                       isLoading: state.isLoadingCatalog,
                       errorMessage: state.catalogErrorMessage,
-                      onSearchChanged: (_) => setState(() {}),
+                      onSearchChanged: (value) {
+                        setState(() {
+                          _selectedJuegoId = null;
+                        });
+                        ref
+                            .read(addInventarioItemControllerProvider.notifier)
+                            .searchCatalog(value);
+                      },
                       onRetry: () {
                         ref
                             .read(addInventarioItemControllerProvider.notifier)

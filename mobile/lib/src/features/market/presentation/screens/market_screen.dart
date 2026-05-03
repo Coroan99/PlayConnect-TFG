@@ -8,6 +8,7 @@ import '../../../../app/router/app_router.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../games/domain/juego_catalogo.dart';
 import '../../../publications/domain/publicacion.dart';
 import '../../../publications/presentation/controllers/publicaciones_controller.dart';
 import '../../../publications/presentation/widgets/publicacion_card.dart';
@@ -72,6 +73,8 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     final hasAnyPublication = publicacionesOtrosUsuarios.isNotEmpty;
     final hasOnlyOwnPublications =
         publicacionesState.publicaciones.isNotEmpty && !hasAnyPublication;
+    final hasAnyPublicationInSelectedCity =
+        marketView.publicacionesPorCiudad.isNotEmpty;
 
     return RefreshIndicator(
       onRefresh: publicacionesController.refresh,
@@ -98,6 +101,11 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                     onSelected: marketController.selectCity,
                   ),
                   const SizedBox(height: 18),
+                  _TypeFilterCard(
+                    selectedFilter: marketView.selectedTypeFilter,
+                    onSelected: marketController.selectTypeFilter,
+                  ),
+                  const SizedBox(height: 18),
                   if (!marketView.hasRealCityData) const _FallbackInfoCard(),
                   if (!marketView.hasRealCityData) const SizedBox(height: 18),
                   if (!hasAnyPublication)
@@ -109,11 +117,18 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                           ? 'Mercado local solo muestra juegos de otros usuarios. Ahora mismo no hay publicaciones ajenas disponibles.'
                           : 'Cuando otros usuarios publiquen juegos visibles o en venta, apareceran aqui.',
                     )
-                  else if (marketView.publicaciones.isEmpty)
+                  else if (!hasAnyPublicationInSelectedCity)
                     _MarketEmptyState(
                       title: 'Sin publicaciones en ${marketView.selectedCity}',
                       description:
                           'Todavia no hay juegos visibles o en venta para esa ciudad.',
+                    )
+                  else if (marketView.publicaciones.isEmpty)
+                    _MarketEmptyState(
+                      title:
+                          'Sin ${marketView.selectedTypeFilter.label.toLowerCase()} en ${marketView.selectedCity}',
+                      description:
+                          'Prueba a cambiar el tipo de juego para ver el resto del mercado local.',
                     )
                   else
                     ...marketView.publicaciones.map(
@@ -361,6 +376,58 @@ class _CityFilterCard extends StatelessWidget {
                   onSelected: (_) => onSelected(city),
                 );
               }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeFilterCard extends StatelessWidget {
+  const _TypeFilterCard({
+    required this.selectedFilter,
+    required this.onSelected,
+  });
+
+  final GameTypeFilter selectedFilter;
+  final ValueChanged<GameTypeFilter> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Filtrar por tipo',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Combina el tipo de juego con la ciudad para hacer el mercado mas util en demo.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SegmentedButton<GameTypeFilter>(
+              segments: GameTypeFilter.values
+                  .map(
+                    (filter) => ButtonSegment(
+                      value: filter,
+                      label: Text(filter.label),
+                    ),
+                  )
+                  .toList(),
+              selected: {selectedFilter},
+              onSelectionChanged: (selection) {
+                onSelected(selection.first);
+              },
             ),
           ],
         ),

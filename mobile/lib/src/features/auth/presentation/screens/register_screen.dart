@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
+import '../../../../shared/constants/spanish_cities.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/spanish_city_field.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/auth_header.dart';
 
@@ -21,6 +23,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _cityController = TextEditingController();
 
   String _tipo = 'normal';
   bool _obscurePassword = true;
@@ -32,6 +35,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 
@@ -90,6 +94,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 textInputAction: TextInputAction.next,
                                 autofillHints: const [AutofillHints.email],
                                 validator: _validateEmail,
+                              ),
+                              const SizedBox(height: 16),
+                              SpanishCityField(
+                                controller: _cityController,
+                                label: 'Ciudad (España)',
+                                helperText:
+                                    'Opcional. Si no la indicas, Mercado usara Córdoba por defecto.',
+                                textInputAction: TextInputAction.next,
+                                validator: _validateCity,
                               ),
                               const SizedBox(height: 16),
                               AppTextField(
@@ -214,6 +227,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           email: _emailController.text,
           password: _passwordController.text,
           tipo: _tipo,
+          ciudad: canonicalizeSpanishCity(_cityController.text),
         );
   }
 
@@ -243,6 +257,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _validatePassword(String? value) {
     if ((value ?? '').length < 6) {
       return 'La password debe tener al menos 6 caracteres';
+    }
+
+    return null;
+  }
+
+  String? _validateCity(String? value) {
+    final normalized = (value ?? '').trim();
+
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    if (canonicalizeSpanishCity(normalized) == null) {
+      return 'Selecciona una ciudad española valida';
     }
 
     return null;

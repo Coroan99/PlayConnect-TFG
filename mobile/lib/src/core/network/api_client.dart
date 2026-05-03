@@ -52,8 +52,16 @@ class ApiClient {
 
   final Dio _dio;
 
-  Future<ApiResponse> get(String path) {
-    return _request(() => _dio.get<Object?>(_normalize(path)));
+  Future<ApiResponse> get(
+    String path, {
+    Map<String, Object?>? queryParameters,
+  }) {
+    return _request(
+      () => _dio.get<Object?>(
+        _normalize(path),
+        queryParameters: queryParameters,
+      ),
+    );
   }
 
   Future<ApiResponse> post(String path, {Object? data}) {

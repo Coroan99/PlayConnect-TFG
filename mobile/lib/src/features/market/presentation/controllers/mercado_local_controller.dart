@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../games/domain/juego_catalogo.dart';
 import '../../../offers/data/ofertas_repository.dart';
 import '../../../publications/domain/publicacion.dart';
 import '../../../publications/presentation/controllers/publicaciones_controller.dart';
@@ -12,16 +13,19 @@ const defaultMarketCity = 'Córdoba';
 class MercadoLocalState {
   const MercadoLocalState({
     required this.selectedCity,
+    required this.selectedTypeFilter,
     required this.submittingOfferPublicationIds,
   });
 
-  const MercadoLocalState.initial()
+  const MercadoLocalState.initial({required String selectedCity})
     : this(
-        selectedCity: defaultMarketCity,
+        selectedCity: selectedCity,
+        selectedTypeFilter: GameTypeFilter.all,
         submittingOfferPublicationIds: const {},
       );
 
   final String selectedCity;
+  final GameTypeFilter selectedTypeFilter;
   final Set<String> submittingOfferPublicationIds;
 
   bool isSubmittingOffer(String publicationId) {
@@ -30,10 +34,12 @@ class MercadoLocalState {
 
   MercadoLocalState copyWith({
     String? selectedCity,
+    GameTypeFilter? selectedTypeFilter,
     Set<String>? submittingOfferPublicationIds,
   }) {
     return MercadoLocalState(
       selectedCity: selectedCity ?? this.selectedCity,
+      selectedTypeFilter: selectedTypeFilter ?? this.selectedTypeFilter,
       submittingOfferPublicationIds:
           submittingOfferPublicationIds ?? this.submittingOfferPublicationIds,
     );
@@ -45,13 +51,17 @@ class MercadoLocalViewData {
     required this.selectedCity,
     required this.availableCities,
     required this.publicaciones,
+    required this.publicacionesPorCiudad,
     required this.hasRealCityData,
+    required this.selectedTypeFilter,
   });
 
   final String selectedCity;
   final List<String> availableCities;
   final List<Publicacion> publicaciones;
+  final List<Publicacion> publicacionesPorCiudad;
   final bool hasRealCityData;
+  final GameTypeFilter selectedTypeFilter;
 }
 
 final mercadoLocalControllerProvider =
@@ -62,13 +72,15 @@ final mercadoLocalControllerProvider =
 final mercadoLocalViewProvider = Provider<MercadoLocalViewData>((ref) {
   final publicacionesState = ref.watch(publicacionesControllerProvider);
   final marketState = ref.watch(mercadoLocalControllerProvider);
-  final currentUserId = ref.watch(authControllerProvider).usuario?.id;
+  final authUser = ref.watch(authControllerProvider).usuario;
+  final currentUserId = authUser?.id;
+  final preferredCity = authUser?.ciudad ?? defaultMarketCity;
 
   final publicacionesOtrosUsuarios = publicacionesState.publicaciones
       .where((publicacion) => publicacion.usuario.id != currentUserId)
       .toList();
 
-  final availableCities = <String>{};
+  final availableCities = <String>{preferredCity};
   final publicacionesConCiudad = <Publicacion>[];
 
   for (final publicacion in publicacionesOtrosUsuarios) {
@@ -92,7 +104,7 @@ final mercadoLocalViewProvider = Provider<MercadoLocalViewData>((ref) {
     orElse: () => sortedCities.first,
   );
 
-  final publicacionesFiltradas = hasRealCityData
+  final publicacionesPorCiudad = hasRealCityData
       ? publicacionesOtrosUsuarios.where((publicacion) {
           if (!publicacion.usuario.hasCiudad) {
             return true;
@@ -102,27 +114,41 @@ final mercadoLocalViewProvider = Provider<MercadoLocalViewData>((ref) {
               _normalizeCity(selectedCity);
         }).toList()
       : publicacionesOtrosUsuarios;
+  final publicacionesFiltradas = publicacionesPorCiudad.where((publicacion) {
+    return marketState.selectedTypeFilter.matchesTipoApiValue(
+      publicacion.juego.tipoJuego,
+    );
+  }).toList();
 
   _debugLog(
-    'MercadoLocalView -> total=${publicacionesState.publicaciones.length}, otros=${publicacionesOtrosUsuarios.length}, ciudadesReales=$hasRealCityData, ciudadSeleccionada=$selectedCity, visibles=${publicacionesFiltradas.length}',
+    'MercadoLocalView -> total=${publicacionesState.publicaciones.length}, otros=${publicacionesOtrosUsuarios.length}, ciudadesReales=$hasRealCityData, ciudadSeleccionada=$selectedCity, tipo=${marketState.selectedTypeFilter.name}, visibles=${publicacionesFiltradas.length}',
   );
 
   return MercadoLocalViewData(
     selectedCity: selectedCity,
     availableCities: sortedCities,
     publicaciones: publicacionesFiltradas,
+    publicacionesPorCiudad: publicacionesPorCiudad,
     hasRealCityData: hasRealCityData,
+    selectedTypeFilter: marketState.selectedTypeFilter,
   );
 });
 
 class MercadoLocalController extends Notifier<MercadoLocalState> {
   @override
   MercadoLocalState build() {
-    return const MercadoLocalState.initial();
+    final authUser = ref.watch(authControllerProvider).usuario;
+    final selectedCity = authUser?.ciudad ?? defaultMarketCity;
+
+    return MercadoLocalState.initial(selectedCity: selectedCity);
   }
 
   void selectCity(String city) {
     state = state.copyWith(selectedCity: city);
+  }
+
+  void selectTypeFilter(GameTypeFilter filter) {
+    state = state.copyWith(selectedTypeFilter: filter);
   }
 
   Future<String?> enviarOferta({

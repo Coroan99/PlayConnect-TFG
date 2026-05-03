@@ -33,6 +33,7 @@ class AuthApi {
     required String email,
     required String password,
     required String tipo,
+    String? ciudad,
   }) async {
     final response = await _client.post(
       'usuarios',
@@ -41,10 +42,23 @@ class AuthApi {
         'email': email,
         'password': password,
         'tipo': tipo,
+        'ciudad': ciudad,
       },
     );
 
     return AuthSession(usuario: Usuario.fromJson(_asJsonMap(response.data)));
+  }
+
+  Future<Usuario> updateUsuarioCity({
+    required String usuarioId,
+    String? ciudad,
+  }) async {
+    final response = await _client.put(
+      'usuarios/$usuarioId',
+      data: {'ciudad': ciudad},
+    );
+
+    return Usuario.fromJson(_asJsonMap(response.data));
   }
 
   Map<String, Object?> _asJsonMap(Object? payload) {

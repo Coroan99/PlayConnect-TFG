@@ -7,8 +7,13 @@ class JuegosApi {
 
   final ApiClient _client;
 
-  Future<List<JuegoCatalogo>> fetchJuegos() async {
-    final response = await _client.get('juegos');
+  Future<List<JuegoCatalogo>> fetchJuegos({String? search}) async {
+    final response = await _client.get(
+      'juegos',
+      queryParameters: {
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      },
+    );
     final items = _asJsonList(response.data);
 
     return items.map(JuegoCatalogo.fromJson).toList();
